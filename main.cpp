@@ -115,34 +115,6 @@ int main(int argc, char **argv) {
            "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes,AffectedCycles,ReachedMBFS\n";
 
     int num_queries = 100000;
-    ProgressStream qb(num_queries);
-    qb.label() << "Queries";
-    for(int j=0; j<num_queries; j++){
-        int32_t u = rand() % kpll->NumOfVertex();
-        int32_t v = rand() % kpll->NumOfVertex();
-        vector<int> sc_dist;
-        vector<int> kbfs_dist;
-        double up = -GetCurrentTimeInSec();
-        kpll->KDistanceQuery(u, v, sc_dist);
-        up += GetCurrentTimeInSec();
-        double scratch = -GetCurrentTimeInSec();
-        kpll->modBFS(u, v, kbfs_dist);
-        scratch += GetCurrentTimeInSec();
-        assert(sc_dist.size() == kbfs_dist.size());
-        for(size_t l=0; l < sc_dist.size(); l++){
-            if(sc_dist[l] != kbfs_dist[l]){
-                std::cout << "Error bw " << u << "-" << v << "\n";
-                std::cout << "Updated labeling distance: " << sc_dist[l] << "\n";
-                std::cout << "Scratch labeling distance: " << kbfs_dist[l] << "\n";
-                for(size_t id=0; id < sc_dist.size(); id++){
-                    std:: cout << "Up " << sc_dist[id] << " | Scratch " << kbfs_dist[id] << "\n";
-                }
-                assert(false);
-            }
-        }
-        ++qb;
-    }
-    assert(false);
     for(int i=0; i < num_insertions; i++){
         uint32_t a = rand() % kpll->NumOfVertex();
         uint32_t b = rand() % kpll->NumOfVertex();
