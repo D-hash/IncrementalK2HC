@@ -49,7 +49,7 @@ public:
     double ReachedNodes() const { uint64_t sum= 0; for(auto n: reached_nodes) sum+=n; return sum / reached_nodes.size();}
     uint32_t AffectedCycles() const { return aff_cycles; }
     double ReachedMBFS() const { uint64_t sum= 0; for(auto n: reached_mbfs) sum+=n; return sum / reached_mbfs.size();}
-
+    void modBFS(uint32_t s, uint32_t t, std::vector<int> &ret);
     size_t NumOfVertex ();
     size_t IndexSize();
     double AvgIndexSize();

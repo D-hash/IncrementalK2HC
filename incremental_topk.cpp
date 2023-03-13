@@ -58,6 +58,10 @@ ConstructIndex(const vector<pair<int, int> > &es, size_t K, bool directed){
             ordering[deg[i].second] = i;
             reverse_ordering[i] = deg[i].second;
         }
+//        for (size_t i = 0; i < V; i++) {
+//            ordering[i] = i;
+//            reverse_ordering[i] = i;
+//        }
 
         for (size_t i = 0; i < es.size(); i++){
             graph[0][ordering[es[i].first]].push_back(ordering[es[i].second]);
@@ -394,7 +398,10 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
             tmp_dist_count[curr][v] = 0;
 
             if(c == 0 || tmp_pruned[v]) continue;
-            tmp_pruned[v] = Pruning(v, dist, rev);
+            vector<int> ret;
+            int check = KDistanceQuery(reverse_ordering[s], reverse_ordering[v], K, ret);
+            //tmp_pruned[v] = Pruning(v, dist, rev);
+            tmp_pruned[v] = (check == 0 && ret.back() <= dist);
             // cerr << "Pruning done" << endl;
 
             if(tmp_pruned[v]) continue;
@@ -402,6 +409,7 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
             if(tmp_offset[v] == INF8){
                 // Make new label for a node v
                 tmp_offset[v] = dist;
+                tmp_s_offset[v] = dist;
                 AllocLabel(v, s, dist, c, rev);
             }else{
                 // assert(s != 3);
@@ -762,5 +770,28 @@ ExtendLabelRepair(uint32_t v, uint32_t start, uint8_t dist, uint8_t count, bool 
         }
     };
 
+}
+
+void IncrementalTopK::modBFS(uint32_t s, uint32_t t, std::vector<int> &ret) {
+    s = ordering[s];
+    t = ordering[t];
+    vector<vector<int> > dist(V);
+    priority_queue<pair<int, int > > que;
+    que.push(make_pair(0, s));
+
+    while (!que.empty()) {
+        int v = que.top().second;
+        int c = -que.top().first;
+        que.pop();
+
+        if(dist[t].size() >= K) break;
+        if (dist[v].size() >= K)  continue;
+
+        dist[v].push_back(c);
+        for(size_t i = 0; i < graph[0][v].size(); i++){
+            que.push(make_pair(-(1 + c), graph[0][v][i]));
+        }
+    }
+    ret = dist[t];
 }
 
