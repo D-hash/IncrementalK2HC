@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
         query_bar.label() << "Queries";
         for(int j=0; j<num_queries; j++){
             int32_t u = rand() % kpll->NumOfVertex();
-            int32_t v = rand() % kpll->NumOfVertex();
+            int32_t v = u;
             vector<int> up_dist;
             vector<int> sc_dist;
             double up = -GetCurrentTimeInSec();
