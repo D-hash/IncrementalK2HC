@@ -10,10 +10,7 @@
 using namespace std;
 
 const uint8_t IncrementalTopK::INF8 = std::numeric_limits<uint8_t>::max() / 2;
-template <typename T> inline bool ReAlloc(T*& ptr, size_t nmemb){
-    ptr = (T*)realloc(ptr, nmemb * sizeof(T));
-    return ptr != NULL;
-}
+
 
 double GetCurrentTimeSec(){
     struct timeval tv;
@@ -58,10 +55,6 @@ ConstructIndex(const vector<pair<int, int> > &es, size_t K, bool directed){
             ordering[deg[i].second] = i;
             reverse_ordering[i] = deg[i].second;
         }
-//        for (size_t i = 0; i < V; i++) {
-//            ordering[i] = i;
-//            reverse_ordering[i] = i;
-//        }
 
         for (size_t i = 0; i < es.size(); i++){
             graph[0][ordering[es[i].first]].push_back(ordering[es[i].second]);
@@ -99,7 +92,6 @@ KDistanceQuery(int s, int t, uint8_t k, vector<int> &ret){
     size_t pos2 = 0;
 
     vector<int> count(30, 0);
-    // cerr << directed << " " << s << " " << t << endl;
     const index_t &ids = index[directed][s];
     const index_t &idt = index[0][t];
 
@@ -136,50 +128,6 @@ KDistanceQuery(int s, int t, uint8_t k, vector<int> &ret){
     }
 
     return ret.size() < k ? INT_MAX : 0;
-}
-
-void IncrementalTopK::
-KHubsDistanceQuery(uint32_t s, uint32_t t, uint8_t k, vector<pair<u_int32_t,int>> &ret){
-    ret.clear();
-    size_t pos1 = 0;
-    size_t pos2 = 0;
-
-    // cerr << directed << " " << s << " " << t << endl;
-    const index_t &ids = index[directed][s];
-    const index_t &idt = index[0][t];
-    vector<vector<u_int32_t>> count(30);
-    for (;;){
-        if (pos1 >= ids.label_offset.size()) break;
-        if (pos2 >= idt.label_offset.size()) break;
-
-        if (ids.label_offset[pos1].first == idt.label_offset[pos2].first){
-            uint32_t W = ids.label_offset[pos1].first;
-
-            for (size_t i = 0; i < ids.d_array[pos1].size(); i++){
-                for (size_t j = 0; j < idt.d_array[pos2].size(); j++){
-                    uint8_t d_tmp = ids.label_offset[pos1].second + idt.label_offset[pos2].second + i + j;
-                    if (count.size() <= d_tmp) count.resize(d_tmp + 1);
-                    for(int idx = 0; idx < (int)ids.d_array[pos1][i] *  idt.d_array[pos2][j]; idx++){
-                        count[d_tmp].push_back(W);
-                    }
-                }
-            }
-            pos1++, pos2++;
-        } else {
-            if (ids.label_offset[pos1].first < idt.label_offset[pos2].first){
-                pos1++;
-            } else {
-                pos2++;
-            }
-        }
-    }
-
-    for (size_t i = 0; i < count.size(); i++) {
-        for (size_t j = 0; j < count[i].size(); j++){
-            ret.emplace_back(count[i][j], i);
-            if (ret.size() == k) return;
-        }
-    }
 }
 
 size_t IncrementalTopK::
@@ -400,19 +348,15 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
             if(c == 0 || tmp_pruned[v]) continue;
             vector<int> ret;
             int check = KDistanceQuery(reverse_ordering[s], reverse_ordering[v], K, ret);
-            //tmp_pruned[v] = Pruning(v, dist, rev);
             tmp_pruned[v] = (check == 0 && ret.back() <= dist);
-            // cerr << "Pruning done" << endl;
 
             if(tmp_pruned[v]) continue;
 
             if(tmp_offset[v] == INF8){
                 // Make new label for a node v
                 tmp_offset[v] = dist;
-                tmp_s_offset[v] = dist;
                 AllocLabel(v, s, dist, c, rev);
             }else{
-                // assert(s != 3);
                 ExtendLabel(v, s, dist, c, rev, 0);
             }
 
@@ -434,7 +378,6 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
         swap(curr, next);
         dist++;
     }
-    // cerr <<"#visited nodes: " << num_of_labeled_vertices[s] << endl;
     ResetTempVars(s, updated, rev);
 };
 
@@ -483,7 +426,7 @@ UpdateLoops(std::pair<int, int> new_edge) {
     aff_cycles = to_update.size();
     reached_mbfs.clear();
     for(uint32_t u: to_update){
-        if(ordering[u] > min_order) continue;
+        if(u > min_order) continue;
         loop_count[u].clear();
         bool status = true;
         CountLoops(u, status);
@@ -594,7 +537,6 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
             KDistanceQuery(reverse_ordering[s], reverse_ordering[v], dists);
             currently_reached_nodes += 1;
             tmp_pruned[v] = dists.size() == K && *dists.rbegin() <= dist;
-            // cerr << "Pruning done" << endl;
 
             if(tmp_pruned[v]) continue;
 
@@ -646,10 +588,8 @@ SetStartTempVars(uint32_t s, bool rev){
 
 inline void IncrementalTopK::
 ResetTempVars(uint32_t s, const vector<uint32_t> &updated, bool rev){
-    // cerr << rev << " " << s << " " << V << endl;
     const index_t &ids = index[directed && !rev][s];
 
-    // cerr << ids.length << " " << ids.label[0] << endl;
     for(size_t pos = 0; pos < ids.label_offset.size(); pos++){
         int w = ids.label_offset[pos].first;
         tmp_s_offset[w] = INF8;
@@ -662,33 +602,6 @@ ResetTempVars(uint32_t s, const vector<uint32_t> &updated, bool rev){
         tmp_pruned[updated[i]] = false;
         for(int j = 0; j < 2; j++) tmp_dist_count[j][updated[i]] = 0;
     }
-}
-
-inline bool IncrementalTopK::
-Pruning(uint32_t v,  uint8_t d, bool rev){
-    const index_t &idv = index[rev][v];
-
-    size_t pcount = 0;
-
-    // cerr << "Pruning start" << endl;
-    for (size_t pos = 0; pos < idv.label_offset.size(); pos++){
-        uint32_t w = idv.label_offset[pos].first;
-
-        if (tmp_s_offset[w] == INF8) continue;
-
-        const vector<uint8_t> &dcs = tmp_s_count[w];
-
-        int l = dcs.size() - 1;
-        int c = d - tmp_s_offset[w] - idv.label_offset[pos].second;
-
-        // By using precomputed table tmp_s_count, compute the number of path with a single loop.
-        for (int i = 0; i <= c && i < idv.d_array[pos].size(); i++){
-            pcount += (int)dcs[std::min(c - i, l)] * idv.d_array[pos][i];
-        }
-
-        if (pcount >= K) return true;
-    }
-    return false;
 }
 
 inline void IncrementalTopK::

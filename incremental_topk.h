@@ -38,17 +38,13 @@ public:
     void   RemoveEdge(uint32_t a, uint32_t b);
     void   UpdateLoops(std::pair<int, int>);
     void   UpdateIndex(std::pair<int, int>);
-    bool   StoreIndex(std::ofstream &ofs);
-    bool   StoreIndex(const char *file);
-    bool   LoadIndex(std::ifstream &ifs);
-    bool   LoadIndex(const char *file);
 
     double IndexingTime()  const { return indexing_time; }
     double LoopCountTime() const { return loop_count_time; }
     uint32_t AffectedHubs() const { return aff_hubs; }
     double ReachedNodes() const { uint64_t sum= 0; for(auto n: reached_nodes) sum+=n; return sum / reached_nodes.size();}
     uint32_t AffectedCycles() const { return aff_cycles; }
-    double ReachedMBFS() const { uint64_t sum= 0; for(auto n: reached_mbfs) sum+=n; return sum / reached_mbfs.size();}
+    double ReachedMBFS() const { uint64_t sum= 0; for(auto n: reached_mbfs) sum+=n; return reached_mbfs.size()>0 ? sum / reached_mbfs.size() : 0;}
     void modBFS(uint32_t s, uint32_t t, std::vector<int> &ret);
     size_t NumOfVertex ();
     size_t IndexSize();
@@ -93,7 +89,6 @@ private:
                      std::vector<std::tuple<u_int32_t, u_int32_t, uint8_t, u_int8_t, bool, u_int32_t>> &new_labels);
     inline void SetStartTempVars(uint32_t s, bool rev);
     inline void ResetTempVars(uint32_t s, const std::vector<uint32_t> &updated, bool rev);
-    inline bool Pruning(uint32_t v, uint8_t d, bool rev);
     inline void AllocLabel(uint32_t v, uint32_t s, uint8_t d, uint8_t dc, bool rev);
     inline void ExtendLabel(uint32_t v, uint32_t s, uint8_t d, uint8_t dc, bool rev, size_t pos);
     inline void  ExtendLabelRepair(uint32_t v, uint32_t start, uint8_t dist, uint8_t count, bool dir);
