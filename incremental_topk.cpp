@@ -7,65 +7,43 @@
 #include <algorithm>
 #include <cassert>
 #include <climits>
+
+#include "networkit/centrality/DegreeCentrality.hpp"
+
 using namespace std;
 
 const uint8_t IncrementalTopK::INF8 = std::numeric_limits<uint8_t>::max() / 2;
 
 
 double GetCurrentTimeSec(){
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + tv.tv_usec * 1e-6;
+    struct timespec begin;
+    clock_gettime(CLOCK_REALTIME, &begin);
+    double time = begin.tv_sec + begin.tv_nsec * 1e-6;
+    return time;
 }
 
 size_t IncrementalTopK::
 NumOfVertex()        { return V; }
 
 bool IncrementalTopK::
-ConstructIndex(const vector<pair<int, int> > &es, size_t K, bool directed){
+ConstructIndex(NetworKit::Graph graph, size_t K, bool directed){
     Free();
 
-    this->V = 0;
+    this->graph = graph;
+    this->V = graph.numberOfNodes();
+    auto deg = new NetworKit::DegreeCentrality(graph);
+    deg->run();
+    ordering.resize(V);
+    reverse_ordering.resize(V);
+    auto rank = deg->ranking();
+    for(uint32_t s = 0; s < V; s++){
+        ordering[rank[s].first] = s;
+        reverse_ordering[s] = rank[s].first;
+        assert(rank[s].second == graph.degree(rank[s].first));
+    }
+
     this->K = K;
     this->directed = directed;
-
-    for (size_t i = 0; i < es.size(); i++){
-        V = std::max(V, (size_t)std::max(es[i].first, es[i].second) + 1);
-    }
-
-    for (int dir = 0; dir < 1 + directed; dir++){
-        graph[dir].resize(V);
-    }
-
-    // renaming
-    {
-        vector<std::pair<int, int> > deg(V, std::make_pair(0, 0));
-
-        for (size_t i = 0; i < V; i++) deg[i].second = i;
-
-        for (size_t i = 0; i < es.size(); i++){
-            deg[es[i].first ].first++;
-            deg[es[i].second].first++;
-        }
-
-        sort(deg.begin(), deg.end(), greater<pair<int, int> >());
-        ordering.resize(V);
-        reverse_ordering.resize(V);
-        for (size_t i = 0; i < V; i++) {
-            ordering[deg[i].second] = i;
-            reverse_ordering[i] = deg[i].second;
-        }
-
-        for (size_t i = 0; i < es.size(); i++){
-            graph[0][ordering[es[i].first]].push_back(ordering[es[i].second]);
-
-            if (directed){
-                graph[1][ordering[es[i].second]].push_back(ordering[es[i].first]);
-            } else {
-                graph[0][ordering[es[i].second]].push_back(ordering[es[i].first]);
-            }
-        }
-    }
 
     Init();
 
@@ -196,10 +174,6 @@ Free(){
     reverse_ordering.clear();
     loop_count.clear();
 
-    for (int i = 0; i < 2; i++){
-        graph[i].clear();
-    }
-
     tmp_pruned.clear();
     tmp_offset.clear();
     tmp_count .clear();
@@ -266,7 +240,6 @@ CountLoops(uint32_t s, bool &status){
 
     std::queue<uint32_t> node_que[2];
     vector<uint32_t>     updated;
-    const vector<vector<uint32_t> > &fgraph = graph[0];
 
     node_que[curr].push(s);
     updated.push_back(s);
@@ -290,9 +263,8 @@ CountLoops(uint32_t s, bool &status){
                 count += c;
             }
             currently_reached_nodes++;
-            for (size_t i = 0; i < fgraph[v].size(); i++){
-                uint32_t to = fgraph[v][i];
-
+            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+                uint32_t to = ordering[u];
                 if (tmp_count[to] == 0){
                     updated.push_back(to);
                 }
@@ -302,7 +274,7 @@ CountLoops(uint32_t s, bool &status){
                     node_que[next].push(to);
                     tmp_dist_count[next][to] += c;
                 }
-            }
+            });
         }
         if(node_que[next].empty() || count >= K) break;
         swap(curr, next);
@@ -331,7 +303,6 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
     node_que[curr].push(s);
     tmp_dist_count[curr][s] = 1;
     updated.push_back(s);
-    const vector<vector<uint32_t> > &graph_ = graph[rev];
 
     for (;;){
         if (dist == INF8 && status){
@@ -359,9 +330,8 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
             }else{
                 ExtendLabel(v, s, dist, c, rev, 0);
             }
-
-            for(size_t i = 0; i < graph_[v].size(); i++){
-                uint32_t to  = graph_[v][i];
+            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+                uint32_t to = ordering[u];
                 if(tmp_count[to] == 0){
                     updated.push_back(to);
                 }
@@ -371,7 +341,7 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
                     node_que[next].push(to);
                     tmp_dist_count[next][to] += c;
                 }
-            }
+            });
         }
 
         if (node_que[next].empty()) break;
@@ -383,43 +353,45 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
 
 void IncrementalTopK::
 UpdateLoops(std::pair<int, int> new_edge) {
-    std::vector<bool> visited;
-    visited.resize(V, false);
+    std::vector<uint8_t> visited;
+    visited.resize(V, INF8);
     std::set<uint32_t> to_update;
     std::queue<uint32_t> q;
     uint32_t a = new_edge.first;
     uint32_t b = new_edge.second;
-    RemoveEdge(a,b);
-    const vector<vector<uint32_t> > &graph_ = graph[0];
+    // RemoveEdge(a,b);
     q.push(ordering[a]);
-    int distance = 0;
-    while(!q.empty() and distance <= K){
+    visited[ordering[a]] = 0;
+    while(!q.empty()){
         uint32_t vertex = q.front();
         q.pop();
+        if(visited[vertex] > K) continue;
         aff_cycles++;
-        visited[vertex] = true;
         to_update.insert(vertex);
-        for(size_t i = 0; i < graph_[vertex].size(); i++){
-            uint32_t to  = graph_[vertex][i];
-            if(visited[to]) continue;
-            q.push(to);
-        }
-        distance ++;
+        graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
+            uint32_t to = ordering[u];
+            if(visited[to] == INF8 && to != ordering[b]){
+                q.push(to);
+                visited[to] = visited[vertex] + 1;
+            }
+        });
     }
     std::queue<uint32_t> empty;
     std::swap( q, empty );
     q.push(ordering[b]);
-    distance = 0;
-    while(!q.empty() and distance <= K){
+    visited[ordering[b]] = 0;
+    while(!q.empty()){
         uint32_t vertex = q.front(); q.pop();
-        visited[vertex] = true;
+        if(visited[vertex] > K) continue;
+        aff_cycles++;
         to_update.insert(vertex);
-        for(size_t i = 0; i < graph_[vertex].size(); i++){
-            uint32_t to  = graph_[vertex][i];
-            if(visited[to]) continue;
-            q.push(to);
-        }
-        distance ++;
+        graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
+            uint32_t to = ordering[u];
+            if(visited[to] == INF8){
+                q.push(to);
+                visited[to] = visited[vertex] + 1;
+            }
+        });
     }
     AddEdge(a,b);
     uint32_t min_order = min(ordering[a], ordering[b]);
@@ -438,7 +410,7 @@ UpdateIndex(std::pair<int, int> new_edge) {
     uint32_t a = new_edge.first;
     uint32_t b = new_edge.second;
 
-    AddEdge(a,b);
+    // AddEdge(a,b);
 
     aff_hubs = 0;
     reached_nodes.clear();
@@ -450,38 +422,55 @@ UpdateIndex(std::pair<int, int> new_edge) {
     size_t pos_b = 0;
     ProgressStream up_bar(max_length);
     up_bar.label() << "Updating affected hubs..";
-    while (pos_a != idva.label_offset.size() && pos_b != idvb.label_offset.size()){
+    vector<pair<uint32_t,uint8_t>> old_label_a;
+    vector<pair<uint32_t,uint8_t>> old_label_b;
+    vector<std::vector<uint8_t>> old_distances_a;
+    vector<std::vector<uint8_t>> old_distances_b;
+    for(auto elem: idva.label_offset) old_label_a.push_back(elem);
+    for(auto elem: idvb.label_offset) old_label_b.push_back(elem);
+    old_distances_a.resize(idva.d_array.size());
+    old_distances_b.resize(idvb.d_array.size());
+    for(size_t i = 0; i < idva.d_array.size(); i++){
+        for(size_t j = 0; j < idva.d_array[i].size(); j++)
+            old_distances_a[i].push_back(idva.d_array[i][j]);
+    }
+    for(size_t i = 0; i < idvb.d_array.size(); i++){
+        for(size_t j = 0; j < idvb.d_array[i].size(); j++)
+            old_distances_b[i].push_back(idvb.d_array[i][j]);
+    }
+    while (pos_a != old_label_a.size() && pos_b != old_label_b.size()){
         vector<tuple<u_int32_t, u_int32_t, uint8_t, u_int8_t, bool, u_int32_t>> new_labels;
-        uint32_t w_a = pos_a < idva.label_offset.size() ? idva.label_offset[pos_a].first : V;
-        uint32_t w_b = pos_b < idvb.label_offset.size() ? idvb.label_offset[pos_b].first : V;
+        new_labels.clear();
+        uint32_t w_a = pos_a < old_label_a.size() ? old_label_a[pos_a].first : V;
+        uint32_t w_b = pos_b < old_label_b.size() ? old_label_b[pos_b].first : V;
         if(w_a < w_b){
             if(w_a < ordering[b]){
                 aff_hubs++;
-                for(size_t i = 0; i < idva.d_array[pos_a].size(); i++)
-                    for(size_t j = 0; j < idva.d_array[pos_a][i]; j++)
-                        ResumePBfs(w_a,ordering[b], i+idva.label_offset[pos_a].second+1, false, status, new_labels);
+                for(size_t i = 0; i < old_distances_a[pos_a].size(); i++)
+                    for(size_t j = 0; j < old_distances_a[pos_a][i]; j++)
+                        ResumePBfs(w_a,ordering[b], i+old_label_a[pos_a].second+1, false, status, new_labels);
             }
             pos_a++;
         }
         else if(w_b < w_a){
             if(w_b < ordering[a]){
                 aff_hubs++;
-                for(size_t i = 0; i < idvb.d_array[pos_b].size(); i++)
-                    for(size_t j = 0; j < idvb.d_array[pos_b][i]; j++)
-                        ResumePBfs(w_b,ordering[a], i+idvb.label_offset[pos_b].second+1, false, status, new_labels);
+                for(size_t i = 0; i < old_distances_b[pos_b].size(); i++)
+                    for(size_t j = 0; j < old_distances_b[pos_b][i]; j++)
+                        ResumePBfs(w_b,ordering[a], i+old_label_b[pos_b].second+1, false, status, new_labels);
             }
             pos_b++;
         }
         else {
             aff_hubs++;
             if(w_a < ordering[b])
-                for(size_t i = 0; i < idva.d_array[pos_a].size(); i++)
-                    for(size_t j = 0; j < idva.d_array[pos_a][i]; j++)
-                        ResumePBfs(w_a,ordering[b], i+idva.label_offset[pos_a].second+1, false, status, new_labels);
+                for(size_t i = 0; i < old_distances_a[pos_a].size(); i++)
+                    for(size_t j = 0; j < old_distances_a[pos_a][i]; j++)
+                        ResumePBfs(w_a,ordering[b], i+old_label_a[pos_a].second+1, false, status, new_labels);
             if(w_b < ordering[a])
-                for(size_t i = 0; i < idvb.d_array[pos_b].size(); i++)
-                    for(size_t j = 0; j < idvb.d_array[pos_b][i]; j++)
-                        ResumePBfs(w_b,ordering[a], i+idvb.label_offset[pos_b].second+1, false, status, new_labels);
+                for(size_t i = 0; i < old_distances_b[pos_b].size(); i++)
+                    for(size_t j = 0; j < old_distances_b[pos_b][i]; j++)
+                        ResumePBfs(w_b,ordering[a], i+old_label_b[pos_b].second+1, false, status, new_labels);
             pos_a++; pos_b++;
         }
         for(auto nl: new_labels)
@@ -492,14 +481,13 @@ UpdateIndex(std::pair<int, int> new_edge) {
 
 void IncrementalTopK::
 AddEdge(uint32_t a, uint32_t b){
-    graph[0][ordering[a]].push_back(ordering[b]);
-    graph[0][ordering[b]].push_back(ordering[a]);
+    assert(!graph.hasEdge(a,b));
+    graph.addEdge(a,b);
 }
 
 void IncrementalTopK::
 RemoveEdge(uint32_t a, uint32_t b){
-    graph[0][ordering[a]].pop_back();
-    graph[0][ordering[b]].pop_back();
+    graph.removeEdge(a,b);
 }
 
 void IncrementalTopK::
@@ -517,7 +505,6 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
     node_que[curr].push(t);
     tmp_dist_count[curr][t] = 1;
     updated.push_back(t);
-    const vector<vector<uint32_t> > &graph_ = graph[dir];
     uint32_t currently_reached_nodes = 0;
     for (;;){
         if (dist == INF8 && status){
@@ -541,9 +528,8 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
             if(tmp_pruned[v]) continue;
 
             new_labels.emplace_back(v, s, dist, c, dir, tmp_offset[v]);
-
-            for(size_t i = 0; i < graph_[v].size(); i++){
-                uint32_t to  = graph_[v][i];
+            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+                uint32_t to = ordering[u];
                 if(tmp_count[to] == 0){
                     updated.push_back(to);
                 }
@@ -553,7 +539,7 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
                     node_que[next].push(to);
                     tmp_dist_count[next][to] += c;
                 }
-            }
+            });
         }
 
         if (node_que[next].empty()) break;
@@ -701,9 +687,10 @@ void IncrementalTopK::modBFS(uint32_t s, uint32_t t, std::vector<int> &ret) {
         if (dist[v].size() >= K)  continue;
 
         dist[v].push_back(c);
-        for(size_t i = 0; i < graph[0][v].size(); i++){
-            que.push(make_pair(-(1 + c), graph[0][v][i]));
-        }
+        graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+            uint32_t to = ordering[u];
+            que.push(make_pair(-(1 + c), to));
+        });
     }
     ret = dist[t];
 }

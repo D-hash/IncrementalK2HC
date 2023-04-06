@@ -6,13 +6,15 @@
 #define INCREMENTAL_TOPK_H
 #include <vector>
 #include <tuple>
-#include <sys/time.h>
+#include <time.h>
 #include <stdint.h>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <limits>
 #include "progressBar.h"
+#include "networkit/graph/Graph.hpp"
+#include <string>
 
 class IncrementalTopK{
 
@@ -33,7 +35,7 @@ public:
     int KDistanceQuery(int s, int t, uint8_t k);
     int KDistanceQuery(int s, int t){ return KDistanceQuery(s, t, K); }
 
-    bool   ConstructIndex(const std::vector<std::pair<int, int> > &es, size_t K, bool directed);
+    bool   ConstructIndex(NetworKit::Graph graph, size_t K, bool directed);
     void   AddEdge(uint32_t a, uint32_t b);
     void   RemoveEdge(uint32_t a, uint32_t b);
     void   UpdateLoops(std::pair<int, int>);
@@ -52,7 +54,7 @@ public:
 
     std::vector<uint32_t> ordering;
     std::vector<uint32_t> reverse_ordering;
-    std::vector<std::vector<uint32_t> > graph[2];
+    NetworKit::Graph graph;
 
 private:
     size_t V;
