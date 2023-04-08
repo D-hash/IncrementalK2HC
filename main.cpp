@@ -279,42 +279,42 @@ int main(int argc, char **argv) {
             << median(ul_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
     }
 
-    IncrementalTopK scratch_kpll;
-    scratch_kpll.ConstructIndex(g, K, directed);
-    std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
-              << scratch_kpll.IndexingTime()
-              << "\n";
-    vector<double> sl_time;
-    ProgressStream query_bar(num_queries);
-    query_bar.label() << "Queries";
-    for(int j=0; j<num_queries; j++){
-        int32_t u = rand() % kpll->NumOfVertex();
-        int32_t v = rand() % kpll->NumOfVertex();
-        vector<int> up_dist;
-        vector<int> sc_dist;
-        kpll->KDistanceQuery(u, v, up_dist);
-        double scratch = -GetCurrentTimeInSec();
-        scratch_kpll.KDistanceQuery(u, v, sc_dist);
-        scratch += GetCurrentTimeInSec();
-        sl_time.push_back(scratch);
-        assert(up_dist.size() == sc_dist.size());
-            for(size_t l=0; l < up_dist.size(); l++){
-                if(up_dist[l] != sc_dist[l]){
-                    std::cout << "Error bw " << u << "-" << v << "\n";
-                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
-                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
-                    for(size_t id=0; id < up_dist.size(); id++){
-                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
-                    }
-                    assert(false);
-                }
-            }
-        ++query_bar;
-    }
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
-        << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
-        << scratch_kpll.AvgIndexSize() << "," << average(sl_time) << ","
-        << median(sl_time) << ",scratch,scratch\n";
+//    IncrementalTopK scratch_kpll;
+//    scratch_kpll.ConstructIndex(g, K, directed);
+//    std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
+//              << scratch_kpll.IndexingTime()
+//              << "\n";
+//    vector<double> sl_time;
+//    ProgressStream query_bar(num_queries);
+//    query_bar.label() << "Queries";
+//    for(int j=0; j<num_queries; j++){
+//        int32_t u = rand() % kpll->NumOfVertex();
+//        int32_t v = rand() % kpll->NumOfVertex();
+//        vector<int> up_dist;
+//        vector<int> sc_dist;
+//        kpll->KDistanceQuery(u, v, up_dist);
+//        double scratch = -GetCurrentTimeInSec();
+//        scratch_kpll.KDistanceQuery(u, v, sc_dist);
+//        scratch += GetCurrentTimeInSec();
+//        sl_time.push_back(scratch);
+//        assert(up_dist.size() == sc_dist.size());
+//            for(size_t l=0; l < up_dist.size(); l++){
+//                if(up_dist[l] != sc_dist[l]){
+//                    std::cout << "Error bw " << u << "-" << v << "\n";
+//                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
+//                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
+//                    for(size_t id=0; id < up_dist.size(); id++){
+//                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
+//                    }
+//                    assert(false);
+//                }
+//            }
+//        ++query_bar;
+//    }
+//    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
+//        << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
+//        << scratch_kpll.AvgIndexSize() << "," << average(sl_time) << ","
+//        << median(sl_time) << ",scratch,scratch\n";
 
     ofs.close();
 
