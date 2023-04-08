@@ -206,6 +206,9 @@ int main(int argc, char **argv) {
         ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,"
            "ULLoopTime,ULLabelingTime,ULSize,AvgIndexSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
+    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
+        << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
+        << kpll->AvgIndexSize() << "," << 0 << "," << 0 << "," << 0 << "," << 0 <<"\n";
     uint16_t i = 0;
     int num_queries = 100000;
     while(!removed_edges.empty()) {
@@ -232,6 +235,7 @@ int main(int argc, char **argv) {
         kpll->UpdateIndex(make_pair(a,b));
         ul_labeling += GetCurrentTimeInSec();
         std::cout << "Update index time: " << ul_labeling << " | Update loops time: " << ul_loops << "\n";
+
         vector<double> sl_time, ul_time, bfs_time;
         ProgressStream query_bar(num_queries);
         query_bar.label() << "Queries";
@@ -264,7 +268,7 @@ int main(int argc, char **argv) {
 //            }
             ++query_bar;
         }
-        std::cout << i+1 << "-th insertion correct!" << "\n";
+        std::cout << i << "-th insertion correct!" << "\n";
         std::cout << "UL avg query time " << average(ul_time) << "\n";
 //        std::cout << "SL avg query time " << average(sl_time) << "\n";
 //        ofs << graph_file << "," << kpll->NumOfVertex() << "," << g.numberOfEdges() << "," << K << "," << i+1 << ","
@@ -273,7 +277,7 @@ int main(int argc, char **argv) {
 //            << kpll->AvgIndexSize() - scratch_kpll.AvgIndexSize() << "," << average(ul_time) << ","
 //            << average(sl_time) << ","  << median(ul_time) << "," << median(sl_time) << "," << kpll->AffectedHubs()
 //            << "," << kpll->ReachedNodes() << "," << kpll->AffectedCycles() << "," << kpll->ReachedMBFS() << "\n";
-        ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i+1 << ","
+        ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i << ","
             << a << "," << b << ","  << ul_loops << "," << ul_labeling << "," << kpll->IndexSize() << ","
             << kpll->AvgIndexSize() << "," << average(ul_time) << ","
             << median(ul_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
