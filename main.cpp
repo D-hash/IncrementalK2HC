@@ -57,10 +57,9 @@ double median(vector<double> &a) {
 
 
 double GetCurrentTimeInSec(){
-    struct timespec begin;
-    clock_gettime(CLOCK_REALTIME, &begin);
-    double time = begin.tv_sec + begin.tv_nsec * 1e-6;
-    return time;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
 double average(std::vector<double> const& v){
@@ -72,6 +71,45 @@ double average(std::vector<double> const& v){
     double sum = 0;
     for(double time: v) sum += time;
     return sum / count;
+}
+
+void bridgeUtil(NetworKit::Graph& gr, uint32_t u, bool visited[], uint32_t disc[], uint32_t low[], int32_t parent[],
+                vector<pair<uint32_t, uint32_t>>& bridge_edges){
+    static int time = 0;
+    visited[u] = true;
+    disc[u] = low[u] = ++time;
+    assert(gr.degree(u) > 0);
+    assert(gr.hasNode(u));
+    gr.forNeighborsOf(u, [&](NetworKit::node v) {
+        if(!visited[v]){
+            parent[v] = u;
+            bridgeUtil(gr, v, visited, disc, low, parent, bridge_edges);
+            low[u]  = min(low[u], low[v]);
+            if (low[v] > disc[u])
+                bridge_edges.emplace_back(u,v);
+        }
+        else {
+            if(v != parent[u])
+                low[u]  = min(low[u], disc[v]);
+        }
+    });
+}
+
+void bridges(NetworKit::Graph& gr, vector<pair<uint32_t, uint32_t>>& bridge_edges){
+    bool* visited = new bool[gr.numberOfNodes()];
+    uint32_t* disc = new uint32_t[gr.numberOfNodes()];
+    uint32_t* low = new uint32_t[gr.numberOfNodes()];
+    int32_t * parent = new int32_t[gr.numberOfNodes()];
+    for (uint32_t i = 0; i < gr.numberOfNodes(); i++)
+    {
+        parent[i] = -1;
+        visited[i] = false;
+    }
+    for(uint32_t i = 0; i < gr.numberOfNodes(); i++){
+        if(!visited[i]){
+            bridgeUtil(gr, i, visited, disc, low, parent, bridge_edges);
+        }
+    }
 }
 
 void read_graph(const string graph_file, vector<pair<int, int> > &es){
@@ -107,8 +145,10 @@ int main(int argc, char **argv) {
     NetworKit::ConnectedComponents *bic = new NetworKit::ConnectedComponents(raw_g);
     bic->run();
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
-
+    std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     vector<pair<uint32_t, uint32_t> > removed_edges;
+    vector<pair<uint32_t, uint32_t> > be;
+    bridges(g, be);
     long long int num_insertions = std::min((long long int)input_ins,
                                             (long long int)
                                                     (g.numberOfEdges()));
@@ -118,9 +158,22 @@ int main(int argc, char **argv) {
 //    g.removeEdge(2,5);
 //    g.removeEdge(6,9);
     for(size_t i = 0; i < num_insertions; i++){
-        int a = NetworKit::GraphTools::randomNode(g);
-        int b = NetworKit::GraphTools::randomNeighbor(g,a);
+        uint32_t a = NetworKit::GraphTools::randomNode(g);
+        uint32_t b = NetworKit::GraphTools::randomNeighbor(g,a);
+
         g.removeEdge(a,b);
+//        while(find(be.begin(), be.end(), make_pair(a,b)) != be.end() || find(be.begin(), be.end(), make_pair(b,a)) != be.end()){
+//            g.addEdge(a,b);
+//
+//            a = NetworKit::GraphTools::randomNode(g);
+//            b = NetworKit::GraphTools::randomNeighbor(g,a);
+//            g.removeEdge(a,b);
+//        }
+//        bic = new NetworKit::ConnectedComponents(g);
+//        bic->run();
+//        assert(bic->numberOfComponents() == 1);
+        //be.clear();
+        //bridges(g, be);
         bic = new NetworKit::ConnectedComponents(g);
         bic->run();
         while(bic->numberOfComponents()>1){
@@ -134,7 +187,9 @@ int main(int argc, char **argv) {
         removed_edges.emplace_back((uint32_t) a, (uint32_t) b);
     }
     std::cout << "Edges after removal " << g.numberOfEdges() << '\n';
-
+//    bic = new NetworKit::ConnectedComponents(g);
+//    bic->run();
+//    assert(bic->numberOfComponents() == 1);
     IncrementalTopK* kpll = new IncrementalTopK();
     kpll->ConstructIndex(g, K, directed);
     std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()

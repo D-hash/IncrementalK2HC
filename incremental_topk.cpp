@@ -16,10 +16,9 @@ const uint8_t IncrementalTopK::INF8 = std::numeric_limits<uint8_t>::max() / 2;
 
 
 double GetCurrentTimeSec(){
-    struct timespec begin;
-    clock_gettime(CLOCK_REALTIME, &begin);
-    double time = begin.tv_sec + begin.tv_nsec * 1e-6;
-    return time;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
 size_t IncrementalTopK::

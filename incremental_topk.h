@@ -6,7 +6,7 @@
 #define INCREMENTAL_TOPK_H
 #include <vector>
 #include <tuple>
-#include <time.h>
+#include <sys/time.h>
 #include <stdint.h>
 #include <cstdlib>
 #include <iostream>
