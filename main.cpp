@@ -147,8 +147,8 @@ int main(int argc, char **argv) {
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     vector<pair<uint32_t, uint32_t> > removed_edges;
-    vector<pair<uint32_t, uint32_t> > be;
-    bridges(g, be);
+    //vector<pair<uint32_t, uint32_t> > be;
+    //bridges(g, be);
     long long int num_insertions = std::min((long long int)input_ins,
                                             (long long int)
                                                     (g.numberOfEdges()));
