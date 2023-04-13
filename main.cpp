@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     std::cout << "Number of insertions " << num_insertions << "\n";
 
     std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch.csv");
+    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_fix.csv");
 //    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,SLLoopTime,"
 //           "SLLabelingTime,SLSize,ULLoopTime,ULLabelingTime,ULSize,DiffAvgIndexSize,ULMeanQueryTime,SLMeanQueryTime,"
 //           "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes\n";
