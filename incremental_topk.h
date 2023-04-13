@@ -34,7 +34,6 @@ public:
     int KDistanceQuery(int s, int t, std::vector<int> &ret){ return KDistanceQuery(s, t, K, ret); }
     int KDistanceQuery(int s, int t, uint8_t k);
     int KDistanceQuery(int s, int t){ return KDistanceQuery(s, t, K); }
-
     bool   ConstructIndex(NetworKit::Graph graph, size_t K, bool directed);
     void   AddEdge(uint32_t a, uint32_t b);
     void   RemoveEdge(uint32_t a, uint32_t b);
@@ -94,6 +93,7 @@ private:
     inline void AllocLabel(uint32_t v, uint32_t s, uint8_t d, uint8_t dc, bool rev);
     inline void ExtendLabel(uint32_t v, uint32_t s, uint8_t d, uint8_t dc, bool rev, size_t pos);
     inline void  ExtendLabelRepair(uint32_t v, uint32_t start, uint8_t dist, uint8_t count, bool dir);
+    bool Pruning(uint32_t v,  uint8_t d, bool rev);
 
     void KHubsDistanceQuery(uint32_t s, uint32_t t, uint8_t k, std::vector<std::pair<u_int32_t,int>> &ret);
 };

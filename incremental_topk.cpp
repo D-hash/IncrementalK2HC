@@ -316,9 +316,10 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
             tmp_dist_count[curr][v] = 0;
 
             if(c == 0 || tmp_pruned[v]) continue;
-            vector<int> ret;
-            int check = KDistanceQuery(reverse_ordering[s], reverse_ordering[v], K, ret);
-            tmp_pruned[v] = (check == 0 && ret.back() <= dist);
+            //vector<int> ret;
+            //int check = KDistanceQuery(reverse_ordering[s], reverse_ordering[v], K, ret); // TODO ripristina pruning
+            tmp_pruned[v] = Pruning(v, dist, rev);
+            //tmp_pruned[v] = (check == 0 && ret.back() <= dist);
 
             if(tmp_pruned[v]) continue;
 
@@ -448,6 +449,7 @@ UpdateIndex(std::pair<int, int> new_edge) {
                 for(size_t i = 0; i < old_distances_a[pos_a].size(); i++)
                     for(size_t j = 0; j < old_distances_a[pos_a][i]; j++)
                         ResumePBfs(w_a,ordering[b], i+old_label_a[pos_a].second+1, false, status, new_labels);
+                ResetTempVars(w_a, {}, directed);
             }
             pos_a++;
         }
@@ -457,6 +459,7 @@ UpdateIndex(std::pair<int, int> new_edge) {
                 for(size_t i = 0; i < old_distances_b[pos_b].size(); i++)
                     for(size_t j = 0; j < old_distances_b[pos_b][i]; j++)
                         ResumePBfs(w_b,ordering[a], i+old_label_b[pos_b].second+1, false, status, new_labels);
+                ResetTempVars(w_b, {}, directed);
             }
             pos_b++;
         }
@@ -474,6 +477,8 @@ UpdateIndex(std::pair<int, int> new_edge) {
         }
         for(auto nl: new_labels)
             ExtendLabelRepair(std::get<0>(nl), std::get<1>(nl), std::get<2>(nl), std::get<3>(nl), std::get<4>(nl));
+        ResetTempVars(w_a, {}, directed);
+        ResetTempVars(w_b, {}, directed);
         ++up_bar;
     }
 }
@@ -488,7 +493,32 @@ void IncrementalTopK::
 RemoveEdge(uint32_t a, uint32_t b){
     graph.removeEdge(a,b);
 }
+inline bool IncrementalTopK::
+Pruning(uint32_t v,  uint8_t d, bool rev){
+    const index_t &idv = index[rev][v];
 
+    size_t pcount = 0;
+
+    // cerr << "Pruning start" << endl;
+    for (size_t pos = 0; pos < idv.label_offset.size(); pos++){
+        uint32_t w = idv.label_offset[pos].first;
+
+        if (tmp_s_offset[w] == INF8) continue;
+
+        const vector<uint8_t> &dcs = tmp_s_count[w];
+
+        int l = dcs.size() - 1;
+        int c = d - tmp_s_offset[w] - idv.label_offset[pos].second;
+
+        // By using precomputed table tmp_s_count, compute the number of path with a single loop.
+        for (int i = 0; i <= c && i < idv.d_array[pos].size(); i++){
+            pcount += (int)dcs[std::min(c - i, l)] * idv.d_array[pos][i];
+        }
+
+        if (pcount >= K) return true;
+    }
+    return false;
+}
 void IncrementalTopK::
 ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
            std::vector<std::tuple<u_int32_t, u_int32_t, uint8_t, u_int8_t, bool, u_int32_t>> &new_labels) {
