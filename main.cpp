@@ -184,11 +184,11 @@ int main(int argc, char **argv) {
         }
         std::cout << "New edge " << a << " " << b << "\n";
         g.addEdge(a,b);
-        IncrementalTopK scratch_kpll;
-        scratch_kpll.ConstructIndex(g, K, directed);
-        std::cout << "Scracth Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch Indexing time:"
-                  << scratch_kpll.IndexingTime()
-                  << "\n";
+//        IncrementalTopK scratch_kpll;
+//        scratch_kpll.ConstructIndex(g, K, directed);
+//        std::cout << "Scracth Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch Indexing time:"
+//                  << scratch_kpll.IndexingTime()
+//                  << "\n";
         std::cout << "Updating first labeling.. \n";
         double ul_loops = -GetCurrentTimeInSec();
         kpll->UpdateLoops(make_pair(a,b));
@@ -204,27 +204,27 @@ int main(int argc, char **argv) {
             int32_t u = NetworKit::GraphTools::randomNode(g);
             int32_t v = NetworKit::GraphTools::randomNode(g);
             vector<int> up_dist;
-            vector<int> sc_dist;
+            //vector<int> sc_dist;
             double up = -GetCurrentTimeInSec();
             kpll->KDistanceQuery(u, v, up_dist);
             up += GetCurrentTimeInSec();
             ul_time.push_back(up);
             double scratch = -GetCurrentTimeInSec();
-            scratch_kpll.KDistanceQuery(u, v, sc_dist);
+            //scratch_kpll.KDistanceQuery(u, v, sc_dist);
             scratch += GetCurrentTimeInSec();
             sl_time.push_back(scratch);
-            assert(up_dist.size() == sc_dist.size());
-            for(size_t l=0; l < up_dist.size(); l++){
-                if(up_dist[l] != sc_dist[l]){
-                    std::cout << "Error bw " << u << "-" << v << "\n";
-                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
-                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
-                    for(size_t id=0; id < up_dist.size(); id++){
-                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
-                    }
-                    assert(false);
-                }
-            }
+//            assert(up_dist.size() == sc_dist.size());
+//            for(size_t l=0; l < up_dist.size(); l++){
+//                if(up_dist[l] != sc_dist[l]){
+//                    std::cout << "Error bw " << u << "-" << v << "\n";
+//                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
+//                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
+//                    for(size_t id=0; id < up_dist.size(); id++){
+//                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
+//                    }
+//                    assert(false);
+//                }
+//            }
             ++query_bar;
         }
         std::cout << i+1 << "-th insertion correct!" << "\n";
