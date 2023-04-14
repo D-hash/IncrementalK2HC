@@ -417,7 +417,7 @@ UpdateIndex(std::pair<int, int> new_edge) {
     bool status = true;
     const index_t &idva = index[0][ordering[a]];
     const index_t &idvb = index[0][ordering[b]];
-    size_t max_length = max(idva.label_offset.size(),idvb.label_offset.size());
+    size_t max_length = idva.label_offset.size()+idvb.label_offset.size();
     size_t pos_a = 0;
     size_t pos_b = 0;
     ProgressStream up_bar(max_length);
@@ -469,16 +469,16 @@ UpdateIndex(std::pair<int, int> new_edge) {
                 for(size_t i = 0; i < old_distances_a[pos_a].size(); i++)
                     for(size_t j = 0; j < old_distances_a[pos_a][i]; j++)
                         ResumePBfs(w_a,ordering[b], i+old_label_a[pos_a].second+1, false, status, new_labels);
+                ResetTempVars(w_a, {}, directed);
             if(w_b < ordering[a])
                 for(size_t i = 0; i < old_distances_b[pos_b].size(); i++)
                     for(size_t j = 0; j < old_distances_b[pos_b][i]; j++)
                         ResumePBfs(w_b,ordering[a], i+old_label_b[pos_b].second+1, false, status, new_labels);
+                ResetTempVars(w_b, {}, directed);
             pos_a++; pos_b++;
         }
         for(auto nl: new_labels)
             ExtendLabelRepair(std::get<0>(nl), std::get<1>(nl), std::get<2>(nl), std::get<3>(nl), std::get<4>(nl));
-        ResetTempVars(w_a, {}, directed);
-        ResetTempVars(w_b, {}, directed);
         ++up_bar;
     }
 }
@@ -553,7 +553,7 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
             KDistanceQuery(reverse_ordering[s], reverse_ordering[v], dists);
             currently_reached_nodes += 1;
             tmp_pruned[v] = dists.size() == K && *dists.rbegin() <= dist;
-
+            //tmp_pruned[v] = Pruning(v, dist, false);
             if(tmp_pruned[v]) continue;
 
             new_labels.emplace_back(v, s, dist, c, dir, tmp_offset[v]);

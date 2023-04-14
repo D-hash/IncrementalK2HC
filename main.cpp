@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
               << "\n";
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
-    long long int num_insertions = std::min((long long int)input_ins, (long long int)(kpll->NumOfVertex()*(kpll->NumOfVertex()-1)/2 - g.numberOfEdges()));
+    long long int num_insertions = std::min((long long int)(input_ins*g.numberOfEdges()/100), (long long int)(kpll->NumOfVertex()*(kpll->NumOfVertex()-1)/2 - g.numberOfEdges()));
     //long long int num_insertions = 20000;
     std::cout << "Number of insertions " << num_insertions << "\n";
 
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
         << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
         << kpll->AvgIndexSize() << "," << 0 << ","
         << 0 << "," << 0 << "," << 0 <<"\n";
-    int num_queries = 1000000;
+    int num_queries = 100000;
 
     for(int i=0; i < num_insertions; i++){
         uint32_t a = NetworKit::GraphTools::randomNode(g);
