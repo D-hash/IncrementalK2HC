@@ -1,6 +1,6 @@
 #ifndef PROGRESSBAR_H
 #define PROGRESSBAR_H
-
+//
 #include <string>
 #include <sstream>
 #include <cassert>
