@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
               << "\n";
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
-    long long int num_insertions = std::min((long long int)(input_ins*g.numberOfEdges()/100), (long long int)(kpll->NumOfVertex()*(kpll->NumOfVertex()-1)/2 - g.numberOfEdges()));
+    long long int num_insertions = std::min((long long int)(input_ins), (long long int)(kpll->NumOfVertex()*(kpll->NumOfVertex()-1)/2 - g.numberOfEdges()));
     //long long int num_insertions = 20000;
     std::cout << "Number of insertions " << num_insertions << "\n";
 
