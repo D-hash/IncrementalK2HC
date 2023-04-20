@@ -74,45 +74,6 @@ double average(std::vector<double> const& v){
     return sum / count;
 }
 
-void bridgeUtil(NetworKit::Graph& gr, uint32_t u, bool visited[], uint32_t disc[], uint32_t low[], int32_t parent[],
-                vector<pair<uint32_t, uint32_t>>& bridge_edges){
-    static int time = 0;
-    visited[u] = true;
-    disc[u] = low[u] = ++time;
-    assert(gr.degree(u) > 0);
-    assert(gr.hasNode(u));
-    gr.forNeighborsOf(u, [&](NetworKit::node v) {
-        if(!visited[v]){
-            parent[v] = u;
-            bridgeUtil(gr, v, visited, disc, low, parent, bridge_edges);
-            low[u]  = min(low[u], low[v]);
-            if (low[v] > disc[u])
-                bridge_edges.emplace_back(u,v);
-        }
-        else {
-            if(v != parent[u])
-                low[u]  = min(low[u], disc[v]);
-        }
-    });
-}
-
-void bridges(NetworKit::Graph& gr, vector<pair<uint32_t, uint32_t>>& bridge_edges){
-    bool* visited = new bool[gr.numberOfNodes()];
-    uint32_t* disc = new uint32_t[gr.numberOfNodes()];
-    uint32_t* low = new uint32_t[gr.numberOfNodes()];
-    int32_t * parent = new int32_t[gr.numberOfNodes()];
-    for (uint32_t i = 0; i < gr.numberOfNodes(); i++)
-    {
-        parent[i] = -1;
-        visited[i] = false;
-    }
-    for(uint32_t i = 0; i < gr.numberOfNodes(); i++){
-        if(!visited[i]){
-            bridgeUtil(gr, i, visited, disc, low, parent, bridge_edges);
-        }
-    }
-}
-
 void read_graph(const string graph_file, vector<pair<int, int> > &es){
     ifstream ifs(graph_file);
     if (!ifs.good()){
@@ -148,21 +109,38 @@ int main(int argc, char **argv) {
     bic->run();
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
-    //vector<pair<uint32_t, uint32_t> > removed_edges;
-    //vector<pair<uint32_t, uint32_t> > be;
-    //bridges(g, be);
+    long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
+    std::cout << "Number of insertions " << num_insertions << "\n";
+    std::cout << "Removing " << num_insertions << " edges\n";
+    vector<pair<uint32_t, uint32_t> > removed_edges;
+    for(size_t i = 0; i < num_insertions; i++){
+        uint32_t a = NetworKit::GraphTools::randomNode(g);
+        uint32_t b = NetworKit::GraphTools::randomNeighbor(g,a);
+
+        g.removeEdge(a,b);
+        bic = new NetworKit::ConnectedComponents(g);
+        bic->run();
+        while(bic->numberOfComponents()>1){
+            g.addEdge(a,b);
+            a = NetworKit::GraphTools::randomNode(g);
+            b = NetworKit::GraphTools::randomNeighbor(g,a);
+            g.removeEdge(a,b);
+            bic->run();
+        }
+        removed_edges.emplace_back((uint32_t) a, (uint32_t) b);
+    }
+    std::cout << "Edges after removal " << g.numberOfEdges() << '\n';
+
     IncrementalTopK* kpll = new IncrementalTopK();
     kpll->ConstructIndex(g, K, directed);
     std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()
               << "\n";
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
-    long long int num_insertions = std::min((long long int)(input_ins), (long long int)(kpll->NumOfVertex()*(kpll->NumOfVertex()-1)/2 - g.numberOfEdges()));
-    //long long int num_insertions = 20000;
-    std::cout << "Number of insertions " << num_insertions << "\n";
+
 
     std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_fix.csv");
+    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_remove_add.csv");
 //    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,SLLoopTime,"
 //           "SLLabelingTime,SLSize,ULLoopTime,ULLabelingTime,ULSize,DiffAvgIndexSize,ULMeanQueryTime,SLMeanQueryTime,"
 //           "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes\n";
@@ -175,14 +153,18 @@ int main(int argc, char **argv) {
         << 0 << "," << 0 << "," << 0 <<"\n";
     int num_queries = 100000;
 
-    for(int i=0; i < num_insertions; i++){
-        uint32_t a = NetworKit::GraphTools::randomNode(g);
-        uint32_t b = NetworKit::GraphTools::randomNode(g);
+    //for(int i=0; i < num_insertions; i++){
+    int i = 0;
+    for(auto edge: removed_edges){
+//        uint32_t a = NetworKit::GraphTools::randomNode(g);
+//        uint32_t b = NetworKit::GraphTools::randomNode(g);
 
-        while(kpll->graph.hasEdge(a,b) || a == b){
-            a = NetworKit::GraphTools::randomNode(g);
-            b = NetworKit::GraphTools::randomNode(g);
-        }
+//        while(kpll->graph.hasEdge(a,b) || a == b){
+//            a = NetworKit::GraphTools::randomNode(g);
+//            b = NetworKit::GraphTools::randomNode(g);
+//        }
+        uint32_t a = edge.first;
+        uint32_t b = edge.second;
         std::cout << "New edge " << a << " " << b << "\n";
         g.addEdge(a,b);
 //        IncrementalTopK scratch_kpll;
@@ -241,6 +223,7 @@ int main(int argc, char **argv) {
             << a << "," << b << ","  << ul_loops << "," << ul_labeling << "," << kpll->IndexSize() << ","
             << kpll->AvgIndexSize() << "," << average(ul_time) << ","
             << median(ul_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
+        i++;
     }
 
     IncrementalTopK scratch_kpll;
