@@ -399,6 +399,12 @@ UpdateLoops(std::pair<int, int> new_edge) {
     reached_mbfs.clear();
     for(uint32_t u: to_update){
         if(u > min_order) continue;
+//        uint32_t ordered_degree = 0;
+//        graph.forNeighborsOf(reverse_ordering[u], [&](NetworKit::node neighbor){
+//            if(u < ordering[neighbor]) ordered_degree++;
+//            if(ordered_degree >= K) return;
+//        });
+//        if(ordered_degree >= K) continue;
         loop_count[u].clear();
         bool status = true;
         CountLoops(u, status);

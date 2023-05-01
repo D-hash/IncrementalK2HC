@@ -74,7 +74,7 @@ double average(std::vector<double> const& v){
     return sum / count;
 }
 
-void read_graph(const string graph_file, vector<pair<int, int> > &es){
+void read_graph(const string graph_file, vector<pair<uint32_t , uint32_t> > &es){
     ifstream ifs(graph_file);
     if (!ifs.good()){
         cerr << "Error: Cannot open " << graph_file << "." << endl;
@@ -82,7 +82,7 @@ void read_graph(const string graph_file, vector<pair<int, int> > &es){
     }
 
     es.clear();
-    for (int u, v; ifs >> u >> v;){
+    for (uint32_t u, v; ifs >> u >> v;){
         es.push_back(make_pair(u, v));
     }
 
