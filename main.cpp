@@ -180,38 +180,38 @@ int main(int argc, char **argv) {
         kpll->UpdateIndex(make_pair(a,b));
         ul_labeling += GetCurrentTimeInSec();
         std::cout << "Update index time: " << ul_labeling << " | Update loops time: " << ul_loops << "\n";
-        vector<double> sl_time, ul_time, bfs_time;
-        ProgressStream query_bar(num_queries);
-        query_bar.label() << "Queries";
-        for(int j=0; j<num_queries; j++){
-            int32_t u = NetworKit::GraphTools::randomNode(g);
-            int32_t v = NetworKit::GraphTools::randomNode(g);
-            vector<int> up_dist;
-            //vector<int> sc_dist;
-            double up = -GetCurrentTimeInSec();
-            kpll->KDistanceQuery(u, v, up_dist);
-            up += GetCurrentTimeInSec();
-            ul_time.push_back(up);
-            double scratch = -GetCurrentTimeInSec();
-            //scratch_kpll.KDistanceQuery(u, v, sc_dist);
-            scratch += GetCurrentTimeInSec();
-            sl_time.push_back(scratch);
-//            assert(up_dist.size() == sc_dist.size());
-//            for(size_t l=0; l < up_dist.size(); l++){
-//                if(up_dist[l] != sc_dist[l]){
-//                    std::cout << "Error bw " << u << "-" << v << "\n";
-//                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
-//                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
-//                    for(size_t id=0; id < up_dist.size(); id++){
-//                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
-//                    }
-//                    assert(false);
-//                }
-//            }
-            ++query_bar;
-        }
+//        vector<double> sl_time, ul_time, bfs_time;
+//        ProgressStream query_bar(num_queries);
+//        query_bar.label() << "Queries";
+//        for(int j=0; j<num_queries; j++){
+//            int32_t u = NetworKit::GraphTools::randomNode(g);
+//            int32_t v = NetworKit::GraphTools::randomNode(g);
+//            vector<int> up_dist;
+//            //vector<int> sc_dist;
+//            double up = -GetCurrentTimeInSec();
+//            kpll->KDistanceQuery(u, v, up_dist);
+//            up += GetCurrentTimeInSec();
+//            ul_time.push_back(up);
+//            double scratch = -GetCurrentTimeInSec();
+//            //scratch_kpll.KDistanceQuery(u, v, sc_dist);
+//            scratch += GetCurrentTimeInSec();
+//            sl_time.push_back(scratch);
+////            assert(up_dist.size() == sc_dist.size());
+////            for(size_t l=0; l < up_dist.size(); l++){
+////                if(up_dist[l] != sc_dist[l]){
+////                    std::cout << "Error bw " << u << "-" << v << "\n";
+////                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
+////                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
+////                    for(size_t id=0; id < up_dist.size(); id++){
+////                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
+////                    }
+////                    assert(false);
+////                }
+////            }
+//            ++query_bar;
+//        }
         std::cout << i+1 << "-th insertion correct!" << "\n";
-        std::cout << "UL avg query time " << average(ul_time) << "\n";
+        //std::cout << "UL avg query time " << average(ul_time) << "\n";
 //        std::cout << "SL avg query time " << average(sl_time) << "\n";
 //        ofs << graph_file << "," << kpll->NumOfVertex() << "," << es.size() << "," << K << "," << i+1 << ","
 //            << a << "," << b << "," << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << ","
@@ -221,8 +221,8 @@ int main(int argc, char **argv) {
 //            << "," << kpll->ReachedNodes() <<"\n";
         ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i+1 << ","
             << a << "," << b << ","  << ul_loops << "," << ul_labeling << "," << kpll->IndexSize() << ","
-            << kpll->AvgIndexSize() << "," << average(ul_time) << ","
-            << median(ul_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
+            << kpll->AvgIndexSize() << "," << 0 << ","
+            << 0 << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
         i++;
     }
 
@@ -233,6 +233,7 @@ int main(int argc, char **argv) {
               << scratch_kpll.IndexingTime()
               << "\n";
     vector<double> sl_time;
+    vector<double> khl_time;
     ProgressStream query_bar(num_queries);
     query_bar.label() << "Queries";
     for(int j=0; j<num_queries; j++){
@@ -240,7 +241,10 @@ int main(int argc, char **argv) {
         int32_t v = NetworKit::GraphTools::randomNode(g);
         vector<int> up_dist;
         vector<int> sc_dist;
+        double khl_query_time = -GetCurrentTimeInSec();
         kpll->KDistanceQuery(u, v, up_dist);
+        khl_query_time += GetCurrentTimeInSec();
+        khl_time.push_back(khl_query_time);
         double scratch = -GetCurrentTimeInSec();
         scratch_kpll.KDistanceQuery(u, v, sc_dist);
         scratch += GetCurrentTimeInSec();
@@ -259,6 +263,10 @@ int main(int argc, char **argv) {
         }
         ++query_bar;
     }
+    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i+1 << ","
+        << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << kpll->IndexSize() << ","
+        << kpll->AvgIndexSize() << "," << average(khl_time) << ","
+        << median(khl_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
     ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
         << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
         << scratch_kpll.AvgIndexSize() << "," << average(sl_time) << ","
