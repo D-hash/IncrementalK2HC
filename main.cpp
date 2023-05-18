@@ -108,6 +108,7 @@ int main(int argc, char **argv) {
     NetworKit::ConnectedComponents *bic = new NetworKit::ConnectedComponents(raw_g);
     bic->run();
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
+    raw_g.~Graph();
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
     std::cout << "Number of insertions " << num_insertions << "\n";
@@ -137,7 +138,7 @@ int main(int argc, char **argv) {
               << "\n";
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
-
+    g.~Graph();
 
     std::ofstream ofs;
     ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_remove_add.csv");
@@ -166,7 +167,7 @@ int main(int argc, char **argv) {
         uint32_t a = edge.first;
         uint32_t b = edge.second;
         std::cout << "New edge " << a << " " << b << "\n";
-        g.addEdge(a,b);
+        // g.addEdge(a,b);
 //        IncrementalTopK scratch_kpll;
 //        scratch_kpll.ConstructIndex(g, K, directed);
 //        std::cout << "Scracth Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch Indexing time:"
@@ -227,8 +228,8 @@ int main(int argc, char **argv) {
     }
 
     IncrementalTopK scratch_kpll;
-    assert(g.numberOfEdges() == kpll->graph.numberOfEdges());
-    scratch_kpll.ConstructIndex(g, K, directed);
+    // assert(g.numberOfEdges() == kpll->graph.numberOfEdges());
+    scratch_kpll.ConstructIndex(kpll->graph, K, directed);
     std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
               << scratch_kpll.IndexingTime()
               << "\n";
@@ -237,8 +238,8 @@ int main(int argc, char **argv) {
     ProgressStream query_bar(num_queries);
     query_bar.label() << "Queries";
     for(int j=0; j<num_queries; j++){
-        int32_t u = NetworKit::GraphTools::randomNode(g);
-        int32_t v = NetworKit::GraphTools::randomNode(g);
+        int32_t u = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
+        int32_t v = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
         vector<int> up_dist;
         vector<int> sc_dist;
         double khl_query_time = -GetCurrentTimeInSec();
