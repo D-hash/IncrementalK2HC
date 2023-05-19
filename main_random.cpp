@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     g.~Graph();
 
     std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_remove_add.csv");
+    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_random.csv");
 //    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,SLLoopTime,"
 //           "SLLabelingTime,SLSize,ULLoopTime,ULLabelingTime,ULSize,DiffAvgIndexSize,ULMeanQueryTime,SLMeanQueryTime,"
 //           "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes\n";
