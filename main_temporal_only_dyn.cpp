@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
     std::vector<double> avg_index_size;
     std::vector<size_t> index_size;
     std::vector<uint32_t> affected_hubs;
-    std::vector<uint32_t> reached_nodes;
+    std::vector<double> reached_nodes;
     int i = 0;
     for(auto edge: removed_edges){
         uint32_t a = edge.first;
@@ -178,11 +178,11 @@ int main(int argc, char **argv) {
         std::cout << "Update index time: " << ul_labeling << " | Update loops time: " << ul_loops << "\n";
         std::cout << i+1 << "-th insertion correct!" << "\n";
         update_loops.push_back(ul_loops);
-        update_loops.push_back(ul_labeling);
+        update_lengths.push_back(ul_labeling);
         avg_index_size.push_back(kpll->AvgIndexSize());
         index_size.push_back(kpll->IndexSize());
         affected_hubs.push_back(kpll->AffectedHubs());
-        affected_hubs.push_back(kpll->IndexSize());
+        reached_nodes.push_back(kpll->ReachedNodes());
         i++;
     }
 
