@@ -113,30 +113,18 @@ int main(int argc, char **argv) {
     long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
     std::cout << "Number of insertions " << num_insertions << "\n";
 
-    IncrementalTopK* kpll = new IncrementalTopK();
-    kpll->ConstructIndex(g, K, directed);
-    std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()
-              << "\n";
-    std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
-
-    g.~Graph();
-
     std::ofstream ofs;
     ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_random_only_scratch.csv");
     ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,"
            "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
-        << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
-        << 0 << ","
-        << 0 << "," << 0 << "," << 0 <<"\n";
     int num_queries = 100000;
     std::vector<pair<uint32_t, uint32_t>> added_edges;
     for(int i=0; i < num_insertions; i++){
         uint32_t a = NetworKit::GraphTools::randomNode(g);
         uint32_t b = NetworKit::GraphTools::randomNode(g);
 
-        while(kpll->graph.hasEdge(a,b) || a == b){
+        while(g.hasEdge(a,b) || a == b){
             a = NetworKit::GraphTools::randomNode(g);
             b = NetworKit::GraphTools::randomNode(g);
         }
@@ -146,7 +134,7 @@ int main(int argc, char **argv) {
     }
 
     IncrementalTopK scratch_kpll;
-    scratch_kpll.ConstructIndex(kpll->graph, K, directed);
+    scratch_kpll.ConstructIndex(g, K, directed);
     std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
               << scratch_kpll.IndexingTime()
               << "\n";
@@ -164,7 +152,7 @@ int main(int argc, char **argv) {
         ++query_bar;
     }
     std::cout << "Writing on csv file\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
+    ofs << graph_file << "," << scratch_kpll.NumOfVertex() << "," << scratch_kpll.graph.numberOfEdges() << "," << K << "," << num_insertions << ","
         << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
         << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch\n";

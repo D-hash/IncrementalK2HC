@@ -112,33 +112,6 @@ int main(int argc, char **argv) {
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
     std::cout << "Number of insertions " << num_insertions << "\n";
-    std::cout << "Removing " << num_insertions << " edges\n";
-    vector<pair<uint32_t, uint32_t> > removed_edges;
-    for(size_t i = 0; i < num_insertions; i++){
-        uint32_t a = NetworKit::GraphTools::randomNode(g);
-        uint32_t b = NetworKit::GraphTools::randomNeighbor(g,a);
-
-        g.removeEdge(a,b);
-        bic = new NetworKit::ConnectedComponents(g);
-        bic->run();
-        while(bic->numberOfComponents()>1){
-            g.addEdge(a,b);
-            a = NetworKit::GraphTools::randomNode(g);
-            b = NetworKit::GraphTools::randomNeighbor(g,a);
-            g.removeEdge(a,b);
-            bic->run();
-        }
-        removed_edges.emplace_back((uint32_t) a, (uint32_t) b);
-    }
-    std::cout << "Edges after removal " << g.numberOfEdges() << '\n';
-
-    IncrementalTopK* kpll = new IncrementalTopK();
-    kpll->ConstructIndex(g, K, directed);
-    std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()
-              << "\n";
-    std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
-
-    g.~Graph();
 
     std::ofstream ofs;
     ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_remove_add_only_scratch.csv");
@@ -148,31 +121,10 @@ int main(int argc, char **argv) {
     ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,"
            "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
-        << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
-        << 0 << ","
-        << 0 << "," << 0 << "," << 0 <<"\n";
     int num_queries = 100000;
 
-    std::vector<double> update_loops;
-    std::vector<double> update_lengths;
-    std::vector<double> avg_index_size;
-    std::vector<size_t> index_size;
-    std::vector<uint32_t> affected_hubs;
-    std::vector<double> reached_nodes;
-    std::vector<pair<uint32_t, uint32_t>> added_edges;
-    //for(int i=0; i < num_insertions; i++){
-    int i = 0;
-    for(auto edge: removed_edges){
-        uint32_t a = edge.first;
-        uint32_t b = edge.second;
-        std::cout << "New edge " << a << " " << b << "\n";
-        std::cout << i+1 << "-th insertion correct!" << "\n";
-        i++;
-    }
-
     IncrementalTopK scratch_kpll;
-    scratch_kpll.ConstructIndex(kpll->graph, K, directed);
+    scratch_kpll.ConstructIndex(g, K, directed);
     std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
               << scratch_kpll.IndexingTime()
               << "\n";
@@ -190,7 +142,7 @@ int main(int argc, char **argv) {
         ++query_bar;
     }
     std::cout << "Writing on csv file\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
+    ofs << graph_file << "," << scratch_kpll.NumOfVertex() << "," << scratch_kpll.graph.numberOfEdges() << "," << K << "," << num_insertions << ","
         << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
         << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch\n";
