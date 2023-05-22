@@ -80,6 +80,7 @@ private:
     std::vector<uint8_t>  tmp_dist_count[2];
     std::vector<uint8_t>  tmp_s_offset;
     std::vector<std::vector<uint8_t> > tmp_s_count;
+    std::vector<uint8_t> visited_in_update_loops;
 
     void Init();
     void Free();

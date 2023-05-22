@@ -147,7 +147,7 @@ Init(){
     tmp_count .resize(V, 0);
     tmp_s_offset.resize(V, INF8); tmp_s_offset.push_back(0);
     tmp_s_count .resize(V);
-
+    visited_in_update_loops.resize(V, INF8);
     for (int j = 0; j < 2; j++) tmp_dist_count[j].resize(V, 0);
 
     loop_count.resize(V);
@@ -172,7 +172,7 @@ Free(){
     ordering.clear();
     reverse_ordering.clear();
     loop_count.clear();
-
+    visited_in_update_loops.clear();
     tmp_pruned.clear();
     tmp_offset.clear();
     tmp_count .clear();
@@ -353,43 +353,46 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
 
 void IncrementalTopK::
 UpdateLoops(std::pair<int, int> new_edge) {
-    std::vector<uint8_t> visited;
-    visited.resize(V, INF8);
     std::set<uint32_t> to_update;
+    std::set<uint32_t> reset_visited;
     std::queue<uint32_t> q;
     uint32_t a = new_edge.first;
     uint32_t b = new_edge.second;
     // RemoveEdge(a,b);
     q.push(ordering[a]);
-    visited[ordering[a]] = 0;
+    visited_in_update_loops[ordering[a]] = 0;
     while(!q.empty()){
         uint32_t vertex = q.front();
         q.pop();
-        if(visited[vertex] > K) continue;
+        if(visited_in_update_loops[vertex] > K) continue;
         aff_cycles++;
         to_update.insert(vertex);
         graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
             uint32_t to = ordering[u];
-            if(visited[to] == INF8 && to != ordering[b]){
+            if(visited_in_update_loops[to] == INF8 && to != ordering[b]){
                 q.push(to);
-                visited[to] = visited[vertex] + 1;
+                visited_in_update_loops[to] = visited_in_update_loops[vertex] + 1;
+                if(reset_visited.size() != V)
+                    reset_visited.insert(to);
             }
         });
     }
     std::queue<uint32_t> empty;
     std::swap( q, empty );
     q.push(ordering[b]);
-    visited[ordering[b]] = 0;
+    visited_in_update_loops[ordering[b]] = 0;
     while(!q.empty()){
         uint32_t vertex = q.front(); q.pop();
-        if(visited[vertex] > K) continue;
+        if(visited_in_update_loops[vertex] > K) continue;
         aff_cycles++;
         to_update.insert(vertex);
         graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
             uint32_t to = ordering[u];
-            if(visited[to] == INF8){
+            if(visited_in_update_loops[to] == INF8){
                 q.push(to);
-                visited[to] = visited[vertex] + 1;
+                visited_in_update_loops[to] = visited_in_update_loops[vertex] + 1;
+                if(reset_visited.size() != V)
+                    reset_visited.insert(to);
             }
         });
     }
@@ -409,6 +412,11 @@ UpdateLoops(std::pair<int, int> new_edge) {
         bool status = true;
         CountLoops(u, status);
     }
+
+    for(auto v: reset_visited) visited_in_update_loops[v] = INF8;
+    visited_in_update_loops[ordering[b]] = INF8;
+    visited_in_update_loops[ordering[a]] = INF8;
+    for(auto v: visited_in_update_loops) assert(v == INF8);
 }
 
 void IncrementalTopK::

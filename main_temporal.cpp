@@ -148,13 +148,13 @@ int main(int argc, char **argv) {
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
     std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_03_prefetch_temporal.csv");
+    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_temporal.csv");
     ofs << "Graph,Vertices,Edges,K,Insertions,"
-           "ULLoopTime,ULLabelingTime,ULSize,AvgIndexSize,ULMeanQueryTime,"
+           "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
     ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
         << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
-        << kpll->AvgIndexSize() << "," << 0 << ","
+        << 0 << ","
         << 0 << "," << 0 << "," << 0 <<"\n";
     int num_queries = 100000;
 
@@ -180,8 +180,8 @@ int main(int argc, char **argv) {
         std::cout << i+1 << "-th insertion correct!" << "\n";
         update_loops.push_back(ul_loops);
         update_lengths.push_back(ul_labeling);
-        avg_index_size.push_back(kpll->AvgIndexSize());
-        index_size.push_back(kpll->IndexSize());
+        // avg_index_size.push_back(kpll->AvgIndexSize());
+        index_size.push_back(0);
         affected_hubs.push_back(kpll->AffectedHubs());
         reached_nodes.push_back(kpll->ReachedNodes());
         i++;
@@ -228,16 +228,16 @@ int main(int argc, char **argv) {
         ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << ","
             << j + 1 << ","
             << update_loops[j] << "," << update_lengths[j] << "," << index_size[j] << ","
-            << avg_index_size[j] << "," << 0 << ","
+            << 0 << ","
             << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] << "\n";
     }
     ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i+1 << ","
         << "final" << "," << "final" << "," << kpll->IndexSize() << ","
-        << kpll->AvgIndexSize() << "," << average(khl_time) << ","
+        << average(khl_time) << ","
         << median(khl_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
     ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
         << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
-        << scratch_kpll.AvgIndexSize() << "," << average(sl_time) << ","
+        << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch\n";
     std::cout << "Writing done!\n";
     ofs.close();

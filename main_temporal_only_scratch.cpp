@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
     //std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
 
     std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"03_prefetch_temporal_only_scratch.csv");
+    ofs.open(graph_file+"_"+std::to_string(K)+"_temporal_only_scratch.csv");
 //    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,SLLoopTime,"
 //           "SLLabelingTime,SLSize,ULLoopTime,ULLabelingTime,ULSize,DiffAvgIndexSize,ULMeanQueryTime,SLMeanQueryTime,"
 //           "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes\n";
