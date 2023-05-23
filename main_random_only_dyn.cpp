@@ -181,7 +181,6 @@ int main(int argc, char **argv) {
         affected_hubs.push_back(kpll->AffectedHubs());
         reached_nodes.push_back(kpll->ReachedNodes());
         added_edges.emplace_back(a,b);
-        i++;
     }
 
     vector<double> khl_time;
