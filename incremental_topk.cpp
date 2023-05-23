@@ -9,7 +9,6 @@
 #include <climits>
 
 #include "networkit/centrality/DegreeCentrality.hpp"
-#include "networkit/centrality/EstimateBetweenness.hpp"
 
 using namespace std;
 
@@ -31,17 +30,15 @@ ConstructIndex(NetworKit::Graph graph, size_t K, bool directed){
 
     this->graph = graph;
     this->V = graph.numberOfNodes();
-    //auto centr = new NetworKit::DegreeCentrality(graph);
-    uint32_t n_samples =  round(std::pow((unsigned int)graph.numberOfNodes(),55.0/100.0));
-    auto centr = new NetworKit::EstimateBetweenness(graph, n_samples,false,true);
-    centr->run();
+    auto deg = new NetworKit::DegreeCentrality(graph);
+    deg->run();
     ordering.resize(V);
     reverse_ordering.resize(V);
-    auto rank = centr->ranking();
+    auto rank = deg->ranking();
     for(uint32_t s = 0; s < V; s++){
         ordering[rank[s].first] = s;
         reverse_ordering[s] = rank[s].first;
-        //assert(rank[s].second == graph.degree(rank[s].first));
+        assert(rank[s].second == graph.degree(rank[s].first));
     }
 
     this->K = K;
