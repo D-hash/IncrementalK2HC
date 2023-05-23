@@ -90,6 +90,7 @@ uint32_t read_graph(const string graph_file, vector<pair<uint64_t, pair<uint32_t
         max_id = max(max_id, u);
         max_id = max(max_id, v);
     }
+    std::cout << "size " << es.size() << " edges " << edges << "\n";
     assert(es.size() == edges);
     assert(vertices == max_id + 1);
 

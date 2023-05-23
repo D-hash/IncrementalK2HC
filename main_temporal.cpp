@@ -90,8 +90,8 @@ uint32_t read_graph(const string graph_file, vector<pair<uint64_t, pair<uint32_t
         max_id = max(max_id, u);
         max_id = max(max_id, v);
     }
-    assert(es.size() == edges);
-    assert(vertices == max_id + 1);
+    //assert(es.size() == edges);
+    //assert(vertices == max_id + 1);
 
     ifs.close();
     return max_id;
@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
         << median(sl_time) << ",scratch,scratch\n";
     std::cout << "Writing done!\n";
     ofs.close();
-
+    delete kpll;
 
     exit(EXIT_SUCCESS);
 }

@@ -84,6 +84,7 @@ private:
 
     void Init();
     void Free();
+    void FreeAuxiliary();
     bool Labeling();
     void CountLoops(uint32_t s, bool &status);
     void PrunedBfs (uint32_t s, bool dir, bool &status);

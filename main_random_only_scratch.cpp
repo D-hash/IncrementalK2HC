@@ -130,7 +130,6 @@ int main(int argc, char **argv) {
         }
         std::cout << "New edge " << a << " " << b << "\n";
         std::cout << i+1 << "-th insertion correct!" << "\n";
-        i++;
     }
 
     IncrementalTopK scratch_kpll;

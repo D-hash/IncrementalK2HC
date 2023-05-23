@@ -9,6 +9,7 @@
 #include <climits>
 
 #include "networkit/centrality/DegreeCentrality.hpp"
+#include "networkit/centrality/EstimateBetweenness.hpp"
 
 using namespace std;
 
@@ -30,15 +31,17 @@ ConstructIndex(NetworKit::Graph graph, size_t K, bool directed){
 
     this->graph = graph;
     this->V = graph.numberOfNodes();
-    auto deg = new NetworKit::DegreeCentrality(graph);
-    deg->run();
+    //auto centr = new NetworKit::DegreeCentrality(graph);
+    uint32_t n_samples =  round(std::pow((unsigned int)graph.numberOfNodes(),55.0/100.0));
+    auto centr = new NetworKit::EstimateBetweenness(graph, n_samples,false,true);
+    centr->run();
     ordering.resize(V);
     reverse_ordering.resize(V);
-    auto rank = deg->ranking();
+    auto rank = centr->ranking();
     for(uint32_t s = 0; s < V; s++){
         ordering[rank[s].first] = s;
         reverse_ordering[s] = rank[s].first;
-        assert(rank[s].second == graph.degree(rank[s].first));
+        //assert(rank[s].second == graph.degree(rank[s].first));
     }
 
     this->K = K;
@@ -196,6 +199,20 @@ Free(){
         }
         index[dir].clear();
     }
+}
+
+void IncrementalTopK::
+FreeAuxiliary() {
+    visited_in_update_loops.clear();
+    tmp_pruned.clear();
+    tmp_offset.clear();
+    tmp_count .clear();
+
+    for (int i = 0; i < 2; i++){
+        tmp_dist_count[i].clear();
+    }
+    tmp_s_offset.clear();
+    tmp_s_count .clear();
 }
 
 bool IncrementalTopK::
