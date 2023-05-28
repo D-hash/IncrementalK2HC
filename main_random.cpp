@@ -272,6 +272,7 @@ int main(int argc, char **argv) {
         }
         ++query_bar;
     }
+
     std::cout << "Writing on csv file\n";
     for(size_t j = 0; j < num_insertions; j++) {
         ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << j << ","

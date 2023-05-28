@@ -97,6 +97,7 @@ uint32_t read_graph(const string graph_file, vector<pair<uint64_t, pair<uint32_t
     return max_id;
 }
 
+
 int main(int argc, char **argv) {
     srand (time(NULL));
     if (argc != 5) {

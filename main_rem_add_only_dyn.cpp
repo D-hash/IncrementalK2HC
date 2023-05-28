@@ -109,6 +109,8 @@ int main(int argc, char **argv) {
     bic->run();
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
     raw_g.~Graph();
+    bic = new NetworKit::ConnectedComponents(g);
+    bic->run();
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
     std::cout << "Number of insertions " << num_insertions << "\n";
@@ -119,7 +121,6 @@ int main(int argc, char **argv) {
         uint32_t b = NetworKit::GraphTools::randomNeighbor(g,a);
 
         g.removeEdge(a,b);
-        bic = new NetworKit::ConnectedComponents(g);
         bic->run();
         while(bic->numberOfComponents()>1){
             g.addEdge(a,b);
