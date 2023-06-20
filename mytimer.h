@@ -38,9 +38,9 @@ private:
 //	return std::chrono::high_resolution_clock::now();
 	//Precise timing
 	 struct timespec time;
-	 //CLOCK_PROCESS_CPUTIME_ID replaced to deal with multicore architecture
+	//CLOCK_PROCESS_CPUTIME_ID replaced with CLOCK_MONOTONIC to deal with multicore architecture
 
-	 clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time);
+	clock_gettime(CLOCK_MONOTONIC, &time);
 	 return (double)time.tv_sec + (double)time.tv_nsec * 1e-9;
 //
 
