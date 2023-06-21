@@ -30,7 +30,7 @@ class IncrementalTopK{
         };
 
 public:
-    IncrementalTopK(NetworKit::Graph*, dist, bool, dist);
+    IncrementalTopK(NetworKit::Graph*, dist, bool, dist, bool);
 
     ~IncrementalTopK();
 
@@ -62,12 +62,13 @@ public:
     vertex aff_hubs;
     vertex aff_cycles;
 
+    void deallocate_aux();
 
 private:
     std::vector<vertex> updated;
     std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
     std::set<vertex> vertices_to_update;
-
+    bool is_from_scratch_only;
     std::vector<dist> tmp_v;
     void verify_sizes();
     void pruned_bfs (vertex, bool);
@@ -116,7 +117,6 @@ private:
 
 
 
-    // void deallocate_aux();
 
 
     

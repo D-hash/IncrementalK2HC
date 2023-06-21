@@ -14,19 +14,24 @@ using namespace std;
 const vertex IncrementalTopK::null_vertex = round(std::numeric_limits<vertex>::max()/2);
 const dist IncrementalTopK::null_distance = round(std::numeric_limits<dist>::max()/2);
 
-IncrementalTopK::IncrementalTopK(NetworKit::Graph* g, dist k_value, bool dir, dist ord){
+IncrementalTopK::IncrementalTopK(NetworKit::Graph* g, dist k_value, bool dir, dist ord, bool is_from_scratch){
 
     this->graph = g;
     this->K = k_value;
     this->directed = dir;
     this->ordering_type = ord;
+    this->is_from_scratch_only = is_from_scratch;
+
     this->length_labels[0].clear();
     this->length_labels[1].clear();
+    
     this->loops_time = 0.0;
     this->lengths_time = 0.0;
+    
     this->ordering_rank.resize(graph->numberOfNodes(),{null_vertex,null_vertex});
     this->reverse_ordering.resize(graph->numberOfNodes(),null_vertex);
     this->ordering.resize(graph->numberOfNodes(),null_vertex);
+    
     double centr_time = 0.0;
     this->loop_entries = 0;
     this->length_entries = 0;
@@ -128,9 +133,41 @@ IncrementalTopK::IncrementalTopK(NetworKit::Graph* g, dist k_value, bool dir, di
         std::cout<<"In position "<<count<<" we have vertex "<<this->reverse_ordering[count]<<" rank "<<this->ordering_rank[count].first<<std::endl;
 
     this->ordering_rank.clear();
+    this->ordering_rank.shrink_to_fit();
 
 };
 IncrementalTopK::~IncrementalTopK(){};
+
+void IncrementalTopK::deallocate_aux() {
+    
+    this->tmp_pruned.clear();
+    this->tmp_pruned.shrink_to_fit();
+    
+    this->tmp_offset.clear();
+    this->tmp_offset.shrink_to_fit();
+    
+    this->tmp_count .clear();
+    this->tmp_count .shrink_to_fit();
+
+    this->tmp_s_offset.clear();
+    this->tmp_s_offset.shrink_to_fit();
+
+    this->tmp_s_count .clear();
+    this->tmp_s_count .shrink_to_fit();
+
+    this->visited_in_update_loops.clear();
+    this->visited_in_update_loops.shrink_to_fit();
+
+    for (int i = 0; i < 2; i++){
+        this->tmp_dist_count[i].clear();
+        this->tmp_dist_count[i].shrink_to_fit();
+
+    }
+
+
+
+}
+
 
 void IncrementalTopK::build(){
 
@@ -143,7 +180,10 @@ void IncrementalTopK::build(){
     this->tmp_s_offset.push_back(0);
     this->tmp_s_count .resize(graph->numberOfNodes());
     
-    this->visited_in_update_loops.resize(graph->numberOfNodes(), null_distance);
+    
+    if(!is_from_scratch_only){
+        this->visited_in_update_loops.resize(graph->numberOfNodes(), null_distance);
+    }
 
     this->reached_mbfs.clear();
 
@@ -437,22 +477,10 @@ void IncrementalTopK::verify_sizes(){
 }
 
 
-// void IncrementalTopK::deallocate_aux() {
-//     visited_in_update_loops.clear();
-//     tmp_pruned.clear();
-//     tmp_offset.clear();
-//     tmp_count .clear();
-
-//     for (int i = 0; i < 2; i++){
-//         tmp_dist_count[i].clear();
-//     }
-//     tmp_s_offset.clear();
-//     tmp_s_count .clear();
-// }
-
 void IncrementalTopK::update_loops() {
     
     this->vertices_to_update.clear();
+
     std::set<vertex> reset_visited;
     std::queue<vertex> *q = new std::queue<vertex>();
 
@@ -545,8 +573,8 @@ void IncrementalTopK::update_loops() {
         if(ordered_degree >= K){
             continue;
         }
-        loop_labels[u].clear();
-        
+        this->loop_labels[u].clear();
+        this->loop_labels[u].shrink_to_fit();
         this->compute_loop_entries(u);
     }
     for(it=reset_visited.begin();it!=reset_visited.end();it++){
@@ -565,21 +593,19 @@ void IncrementalTopK::update_lengths() {
 
 
 
-    aff_hubs = 0;
-    reached_nodes.clear();
+    this->aff_hubs = 0;
+    this->reached_nodes.clear();
 
     const index_t &idva = length_labels[0][ordering[this->x]];
     const index_t &idvb = length_labels[0][ordering[this->y]];
     
     
-
-    
-    // std::cout<< "Updating affected hubs ...";
     
     this->old_label_a.clear();
     this->old_label_b.clear();
     this->old_distances_a.clear();
     this->old_distances_b.clear();
+    
     vertex w_a, w_b;
 
     for(auto& elem: idva.label_offset){
@@ -607,7 +633,7 @@ void IncrementalTopK::update_lengths() {
     size_t pos_b = 0;
     while (pos_a != this->old_label_a.size() && pos_b != this->old_label_b.size()){
         
-        new_labels.clear();
+        this->new_labels.clear();
         
         w_a = pos_a < this->old_label_a.size() ? this->old_label_a[pos_a].first : graph->numberOfNodes();
         w_b = pos_b < this->old_label_b.size() ? this->old_label_b[pos_b].first : graph->numberOfNodes();
@@ -680,10 +706,10 @@ inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
     const index_t &idv = length_labels[rev][v];
 
     size_t pcount = 0;
-
+    vertex w = 0;
     // cerr << "prune start" << endl;
     for (size_t pos = 0; pos < idv.label_offset.size(); pos++){
-        vertex w = idv.label_offset[pos].first;
+        w = idv.label_offset[pos].first;
 
         if (tmp_s_offset[w] == null_distance) continue;
 
@@ -780,6 +806,7 @@ inline void IncrementalTopK::set_temp_vars(vertex s, bool rev){
 
     for(size_t pos = 0; pos < ids.label_offset.size(); pos++){
         w = ids.label_offset[pos].first;
+        
         this->tmp_s_offset[w] = ids.label_offset[pos].second;
 
         this->tmp_v.clear();
@@ -806,6 +833,7 @@ inline void IncrementalTopK::reset_temp_vars(vertex s, bool rev){
         w = ids.label_offset[pos].first;
         this->tmp_s_offset[w] = null_distance;
         this->tmp_s_count[w].clear();
+        this->tmp_s_count[w].shrink_to_fit();
     }
 
     for(size_t i = 0; i < this->updated.size(); i++){

@@ -203,10 +203,10 @@ int main(int argc, char **argv) {
     assert(graph->numberOfEdges()==original_n_edges-removed_edges.size());
     std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
 
-    IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering);
+    IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering, false);
 
     kpll->build();
-    
+
     std::cout << "First Labeling Loop time: " << kpll->loops_time << " s | First Labeling Indexing time: " << kpll->lengths_time<< " s\n";
     std::cout << "First Labeling Loop entries: " << kpll->loop_entries<<" First Labeling Length Entries: "<<kpll->length_entries<< "\n";
     std::cout << "Number of Vertices: " << graph->numberOfNodes() << "\n";
@@ -299,11 +299,15 @@ int main(int argc, char **argv) {
         added_edges.push_back(removed_edges[t]);
         
     }
+    kpll->deallocate_aux();
+
     assert(added_edges.size()==removed_edges.size());
 
-    IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering);
+    IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering, true);
 
     scratch_kpll->build();
+    //OK, no updates
+    scratch_kpll->deallocate_aux();
 
     std::cout << "From Scratch Loop time: " << scratch_kpll->loops_time << " s | From Scratch Indexing time: "<< scratch_kpll->lengths_time<< " s\n";
     std::cout << "From Scratch Loop entries: " << scratch_kpll->loop_entries<<" From Scratch Length Entries: "<<scratch_kpll->length_entries<< "\n";
