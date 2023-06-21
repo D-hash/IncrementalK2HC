@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <queue>
+#include <set>
 #include <limits>
 #include "progressBar.h"
 #include "networkit/graph/Graph.hpp"
@@ -64,7 +66,9 @@ public:
 private:
     std::vector<vertex> updated;
     std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
+    std::set<vertex> vertices_to_update;
 
+    std::vector<dist> tmp_v;
     void verify_sizes();
     void pruned_bfs (vertex, bool);
     void reset_temp_vars(vertex, bool);
@@ -112,7 +116,7 @@ private:
 
 
 
-    void deallocate_aux();
+    // void deallocate_aux();
 
 
     
