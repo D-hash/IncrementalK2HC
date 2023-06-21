@@ -62,13 +62,16 @@ public:
 
 
 private:
+    std::vector<vertex> updated;
+    std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
+
     void verify_sizes();
     void pruned_bfs (vertex, bool);
-    void reset_temp_vars(vertex, const std::vector<vertex> &, bool);
+    void reset_temp_vars(vertex, bool);
     void set_temp_vars(vertex, bool);
     bool prune(vertex,  dist, bool);
     void compute_loop_entries(vertex);
-    void resume_pbfs(vertex, vertex, dist, bool, std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> &);
+    void resume_pbfs(vertex, vertex, dist, bool);
     void allocate_label(vertex, vertex, dist, dist, bool);
     void extend_label(vertex, vertex, dist, dist, bool, size_t);
     void extend_label_repair(vertex, vertex, dist, dist, bool);
@@ -85,6 +88,10 @@ private:
     bool directed;
     dist ordering_type;
 
+    std::vector<std::pair<vertex,dist>> old_label_a;
+    std::vector<std::pair<vertex,dist>> old_label_b;
+    std::vector<std::vector<dist>> old_distances_a;
+    std::vector<std::vector<dist>> old_distances_b;
 
 
     std::vector<vertex> reached_nodes;

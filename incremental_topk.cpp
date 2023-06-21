@@ -135,12 +135,16 @@ IncrementalTopK::IncrementalTopK(NetworKit::Graph* g, dist k_value, bool dir, di
 IncrementalTopK::~IncrementalTopK(){};
 
 void IncrementalTopK::build(){
+
+    
     tmp_pruned.resize(graph->numberOfNodes(), false);
     tmp_offset.resize(graph->numberOfNodes(), null_distance);
     tmp_count .resize(graph->numberOfNodes(), 0);
+
     tmp_s_offset.resize(graph->numberOfNodes(), null_distance); 
     tmp_s_offset.push_back(0);
     tmp_s_count .resize(graph->numberOfNodes());
+    
     visited_in_update_loops.resize(graph->numberOfNodes(), null_distance);
 
     for (size_t j = 0; j < 2; j++){
@@ -177,6 +181,7 @@ void IncrementalTopK::build(){
         this->compute_loop_entries(v);
         ++loop_bar;
     }
+
 
     loops_time = build_timer.elapsed();
 
@@ -296,27 +301,31 @@ void IncrementalTopK::deallocate_aux() {
     tmp_s_count .clear();
 }
 void IncrementalTopK::compute_loop_entries(vertex s){
+
     size_t  count = 0;
     vertex     curr  = 0;
     vertex     next  = 1;
     dist distance  = 0;
 
     std::queue<vertex> node_que[2];
-    std::vector<vertex> updated;
+    
+    this->updated.clear();
 
     node_que[curr].push(s);
-    updated.push_back(s);
+    this->updated.push_back(s);
     tmp_dist_count[curr][s] = 1;
     
     vertex currently_reached_nodes = 0;
     vertex to_v;
+    vertex v;
+    dist c;
 
     for (;;){
 
 
         while (!node_que[curr].empty() && count < this->K){
-            vertex v = node_que[curr].front(); node_que[curr].pop();
-            dist  c = tmp_dist_count[curr][v]; // the number of path from s to v with dist hops.
+            v = node_que[curr].front(); node_que[curr].pop();
+            c = tmp_dist_count[curr][v]; // the number of path from s to v with dist hops.
             tmp_dist_count[curr][v] = 0;
             if (c == 0) {
                 continue;
@@ -333,10 +342,12 @@ void IncrementalTopK::compute_loop_entries(vertex s){
                 count += c;
             }
             currently_reached_nodes++;
-            graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+
+            for(vertex u : graph->neighborRange(reverse_ordering[v])){
+
                 to_v = ordering[u];
                 if (tmp_count[to_v] == 0){
-                    updated.push_back(to_v);
+                    this->updated.push_back(to_v);
                 }
 
                 if (to_v >= s && tmp_count[to_v] < this->K){
@@ -344,7 +355,7 @@ void IncrementalTopK::compute_loop_entries(vertex s){
                     node_que[next].push(to_v);
                     tmp_dist_count[next][to_v] += c;
                 }
-            });
+            }
         }
         if(node_que[next].empty() || count >= K){
             break;
@@ -360,7 +371,7 @@ void IncrementalTopK::compute_loop_entries(vertex s){
     
     reached_mbfs.push_back(currently_reached_nodes);
     
-    reset_temp_vars(s, updated, false);
+    reset_temp_vars(s, false);
 }
 
 void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
@@ -372,11 +383,11 @@ void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
     dist distance = 0;
 
     std::queue<vertex> node_que[2];
-    std::vector<vertex> updated;
+    this->updated.clear();
 
     node_que[curr].push(s);
     tmp_dist_count[curr][s] = 1;
-    updated.push_back(s);
+    this->updated.push_back(s);
 
     for (;;){
 
@@ -406,7 +417,7 @@ void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
             graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
                 vertex to = ordering[u];
                 if(tmp_count[to] == 0){
-                    updated.push_back(to);
+                    this->updated.push_back(to);
                 }
 
                 if(to > s && tmp_count[to] < K){
@@ -423,10 +434,11 @@ void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
         swap(curr, next);
         distance++;
     }
-    reset_temp_vars(s, updated, reversed);
+    reset_temp_vars(s, reversed);
 };
 
 void IncrementalTopK::update_loops() {
+    
     std::set<vertex> to_update;
     std::set<vertex> reset_visited;
     std::queue<vertex> q;
@@ -455,8 +467,13 @@ void IncrementalTopK::update_loops() {
     }
     std::queue<vertex> empty;
     std::swap( q, empty );
+    
+    vertex to_v;
+    
     q.push(ordering[this->y]);
+
     visited_in_update_loops[ordering[this->y]] = 0;
+
     while(!q.empty()){
         dequeued_v = q.front(); 
         q.pop();
@@ -465,37 +482,45 @@ void IncrementalTopK::update_loops() {
         }
         aff_cycles++;
         to_update.insert(dequeued_v);
-        graph->forNeighborsOf(reverse_ordering[dequeued_v], [&](NetworKit::node u) {
-            vertex to = ordering[u];
-            if(visited_in_update_loops[to] == null_distance){
-                q.push(to);
-                visited_in_update_loops[to] = visited_in_update_loops[dequeued_v] + 1;
+        for(vertex u : graph->neighborRange(reverse_ordering[dequeued_v])){
+
+            to_v = ordering[u];
+            if(visited_in_update_loops[to_v] == null_distance){
+                q.push(to_v);
+                visited_in_update_loops[to_v] = visited_in_update_loops[dequeued_v] + 1;
                 if(reset_visited.size() != graph->numberOfNodes()){
-                    reset_visited.insert(to);
+                    reset_visited.insert(to_v);
                 }
             }
-        });
+        }
     }
     assert(!graph->hasEdge(this->x,this->y));
+
     graph->addEdge(this->x,this->y);
 
     vertex min_order = min(ordering[this->x], ordering[this->y]);
+    
     aff_cycles = to_update.size();
+    
     reached_mbfs.clear();
+
     vertex ordered_degree = 0;
     for(vertex u: to_update){
         if(u > min_order){
             continue;
         }
+
         ordered_degree = 0;
-        graph->forNeighborsOf(reverse_ordering[u], [&](NetworKit::node neighbor){
+        for(vertex neighbor : graph->neighborRange(reverse_ordering[u])){
+
             if(u < ordering[neighbor]){
                 ordered_degree++;
             }
             if(ordered_degree >= K){
-                return;
+                continue;
             }
-        });
+        }
+
         if(ordered_degree >= K){
             continue;
         }
@@ -525,85 +550,102 @@ void IncrementalTopK::update_lengths() {
 
     const index_t &idva = length_labels[0][ordering[this->x]];
     const index_t &idvb = length_labels[0][ordering[this->y]];
-    size_t max_length = idva.label_offset.size()+idvb.label_offset.size();
-    size_t pos_a = 0;
-    size_t pos_b = 0;
-    ProgressStream up_bar(max_length);
-    up_bar.label() << "Updating affected hubs..";
-    vector<pair<vertex,dist>> old_label_a;
-    vector<pair<vertex,dist>> old_label_b;
-    vector<std::vector<dist>> old_distances_a;
-    vector<std::vector<dist>> old_distances_b;
-    for(auto elem: idva.label_offset){
-        old_label_a.push_back(elem);
+    
+    
+
+    
+    // std::cout<< "Updating affected hubs ...";
+    
+    this->old_label_a.clear();
+    this->old_label_b.clear();
+    this->old_distances_a.clear();
+    this->old_distances_b.clear();
+    vertex w_a, w_b;
+
+    for(auto& elem: idva.label_offset){
+        this->old_label_a.push_back(elem);
     }
-    for(auto elem: idvb.label_offset){
-        old_label_b.push_back(elem);
+    
+    for(auto& elem: idvb.label_offset){
+        this->old_label_b.push_back(elem);
     }
-    old_distances_a.resize(idva.d_array.size());
-    old_distances_b.resize(idvb.d_array.size());
+    
+    this->old_distances_a.resize(idva.d_array.size());
+    this->old_distances_b.resize(idvb.d_array.size());
+    
     for(size_t i = 0; i < idva.d_array.size(); i++){
         for(size_t j = 0; j < idva.d_array[i].size(); j++){
-            old_distances_a[i].push_back(idva.d_array[i][j]);
+            this->old_distances_a[i].push_back(idva.d_array[i][j]);
         }
     }
     for(size_t i = 0; i < idvb.d_array.size(); i++){
         for(size_t j = 0; j < idvb.d_array[i].size(); j++){
-            old_distances_b[i].push_back(idvb.d_array[i][j]);
+            this->old_distances_b[i].push_back(idvb.d_array[i][j]);
         }
     }
-    while (pos_a != old_label_a.size() && pos_b != old_label_b.size()){
-        vector<tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
+    size_t pos_a = 0;
+    size_t pos_b = 0;
+    while (pos_a != this->old_label_a.size() && pos_b != this->old_label_b.size()){
+        
         new_labels.clear();
-        vertex w_a = pos_a < old_label_a.size() ? old_label_a[pos_a].first : graph->numberOfNodes();
-        vertex w_b = pos_b < old_label_b.size() ? old_label_b[pos_b].first : graph->numberOfNodes();
+        
+        w_a = pos_a < this->old_label_a.size() ? this->old_label_a[pos_a].first : graph->numberOfNodes();
+        w_b = pos_b < this->old_label_b.size() ? this->old_label_b[pos_b].first : graph->numberOfNodes();
+        
         if(w_a < w_b){
             if(w_a < ordering[this->y]){
                 aff_hubs++;
-                for(size_t i = 0; i < old_distances_a[pos_a].size(); i++){
-                    for(size_t j = 0; j < old_distances_a[pos_a][i]; j++){
-                        resume_pbfs(w_a,ordering[this->y], i+old_label_a[pos_a].second+1, false, new_labels);
+                for(size_t i = 0; i < this->old_distances_a[pos_a].size(); i++){
+                    for(size_t j = 0; j < this->old_distances_a[pos_a][i]; j++){
+                        resume_pbfs(w_a,ordering[this->y], i+this->old_label_a[pos_a].second+1, false);
                     }
                 }
-                reset_temp_vars(w_a, {}, directed);
+                reset_temp_vars(w_a, directed);
             }
             pos_a++;
+
         }
         else if(w_b < w_a){
             if(w_b < ordering[this->x]){
                 aff_hubs++;
-                for(size_t i = 0; i < old_distances_b[pos_b].size(); i++){
-                    for(size_t j = 0; j < old_distances_b[pos_b][i]; j++){
-                        resume_pbfs(w_b,ordering[this->x], i+old_label_b[pos_b].second+1, false, new_labels);
+                for(size_t i = 0; i < this->old_distances_b[pos_b].size(); i++){
+                    for(size_t j = 0; j < this->old_distances_b[pos_b][i]; j++){
+                        resume_pbfs(w_b,ordering[this->x], i+this->old_label_b[pos_b].second+1, false);
                     }
                 }
-                reset_temp_vars(w_b, {}, directed);
+                reset_temp_vars(w_b, directed);
             }
             pos_b++;
+
         }
         else {
             aff_hubs++;
-            if(w_a < ordering[this->y])
-                for(size_t i = 0; i < old_distances_a[pos_a].size(); i++){
-                    for(size_t j = 0; j < old_distances_a[pos_a][i]; j++){
-                        resume_pbfs(w_a,ordering[this->y], i+old_label_a[pos_a].second+1, false, new_labels);
+
+            if(w_a < ordering[this->y]){
+                for(size_t i = 0; i < this->old_distances_a[pos_a].size(); i++){
+                    for(size_t j = 0; j < this->old_distances_a[pos_a][i]; j++){
+                        resume_pbfs(w_a,ordering[this->y], i+this->old_label_a[pos_a].second+1, false);
                     }
                 }
-                reset_temp_vars(w_a, {}, directed);
-            if(w_b < ordering[this->x])
-                for(size_t i = 0; i < old_distances_b[pos_b].size(); i++){
-                    for(size_t j = 0; j < old_distances_b[pos_b][i]; j++){
-                        resume_pbfs(w_b,ordering[this->x], i+old_label_b[pos_b].second+1, false, new_labels);
+                reset_temp_vars(w_a, directed);
+            }
+            if(w_b < ordering[this->x]){
+                for(size_t i = 0; i < this->old_distances_b[pos_b].size(); i++){
+                    for(size_t j = 0; j < this->old_distances_b[pos_b][i]; j++){
+                        resume_pbfs(w_b,ordering[this->x], i+this->old_label_b[pos_b].second+1, false);
                     }
                 }
-                reset_temp_vars(w_b, {}, directed);
-            pos_a++; pos_b++;
+                reset_temp_vars(w_b, directed);
+            }
+            pos_a++;
+            pos_b++;
         }
-        for(auto nl: new_labels){
-            extend_label_repair(std::get<0>(nl), std::get<1>(nl), std::get<2>(nl), std::get<3>(nl), std::get<4>(nl));
+        
+        for(size_t t=0;t<new_labels.size();t++){
+            extend_label_repair(std::get<0>(new_labels[t]), std::get<1>(new_labels[t]), std::get<2>(new_labels[t]), std::get<3>(new_labels[t]), std::get<4>(new_labels[t]));
         }
-        ++up_bar;
     }
+    // std::cout<<"done!\n";
 }
 
 
@@ -635,19 +677,22 @@ inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
     }
     return false;
 }
-void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool dir, std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> &new_labels) {
-    set_temp_vars(s, dir);
+void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
+    set_temp_vars(s, rev);
 
     vertex     curr = 0;
     vertex     next = 1;
     dist distance = d;
 
     std::queue<vertex> node_que[2];
-    std::vector<vertex> updated;
+
+    this->updated.clear();
 
     node_que[curr].push(t);
     tmp_dist_count[curr][t] = 1;
-    updated.push_back(t);
+    
+    this->updated.push_back(t);
+    
     vertex currently_reached_nodes = 0;
     std::vector<dist> dists;
 
@@ -668,11 +713,11 @@ void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool dir, std::vec
 
             if(tmp_pruned[v]){continue;}
 
-            new_labels.emplace_back(v, s, distance, c, dir, tmp_offset[v]);
+            new_labels.emplace_back(v, s, distance, c, rev, tmp_offset[v]);
             graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
                 vertex to = ordering[u];
                 if(tmp_count[to] == 0){
-                    updated.push_back(to);
+                    this->updated.push_back(to);
                 }
 
                 if(to > s && tmp_count[to] < K){
@@ -683,23 +728,27 @@ void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool dir, std::vec
             });
         }
 
-        if (node_que[next].empty())  {break;}
+        if (node_que[next].empty()){
+            break;
+        }
         swap(curr, next);
         distance++;
     }
     reached_nodes.push_back(currently_reached_nodes);
-    reset_temp_vars(t, updated, dir);
+    reset_temp_vars(t, rev);
 }
 
 inline void IncrementalTopK::set_temp_vars(vertex s, bool rev){
 
     const index_t &ids = length_labels[directed && !rev][s];
+    vertex w;
+    vector<dist> tmp_v;
 
     for(size_t pos = 0; pos < ids.label_offset.size(); pos++){
-        vertex w = ids.label_offset[pos].first;
+        w = ids.label_offset[pos].first;
         tmp_s_offset[w] = ids.label_offset[pos].second;
 
-        vector<dist> tmp_v;
+        tmp_v.clear();    
         for(size_t i = 0; i < ids.d_array[pos].size(); i++){
             tmp_v.push_back(ids.d_array[pos][i]);
         }
@@ -713,22 +762,22 @@ inline void IncrementalTopK::set_temp_vars(vertex s, bool rev){
     }
 }
 
-inline void IncrementalTopK::reset_temp_vars(vertex s, const std::vector<vertex> & updated, bool rev){
+inline void IncrementalTopK::reset_temp_vars(vertex s, bool rev){
 
     const index_t &ids = length_labels[directed && !rev][s];
-
+    vertex w;
     for(size_t pos = 0; pos < ids.label_offset.size(); pos++){
-        vertex w = ids.label_offset[pos].first;
+        w = ids.label_offset[pos].first;
         tmp_s_offset[w] = null_distance;
         tmp_s_count[w].clear();
     }
 
-    for(size_t i = 0; i < updated.size(); i++){
-        tmp_count [updated[i]] = 0;
-        tmp_offset[updated[i]] = null_distance;
-        tmp_pruned[updated[i]] = false;
+    for(size_t i = 0; i < this->updated.size(); i++){
+        tmp_count [this->updated[i]] = 0;
+        tmp_offset[this->updated[i]] = null_distance;
+        tmp_pruned[this->updated[i]] = false;
         for(size_t j = 0; j < 2; j++){
-            tmp_dist_count[j][updated[i]] = 0;
+            tmp_dist_count[j][this->updated[i]] = 0;
         }
     }
 }

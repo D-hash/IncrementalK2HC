@@ -283,12 +283,12 @@ int main(int argc, char **argv) {
         time_counter.restart();
         kpll->update_loops();
         update_loops_times.push_back(time_counter.elapsed());
-        std::cout<<"done! Update loops time: " << time_counter.elapsed() << "\n"<<std::flush;
+        std::cout<<"done! \nUpdate loops time: " << time_counter.elapsed() << "\n"<<std::flush;
         std::cout << "Updating lengths...";
         time_counter.restart();
         kpll->update_lengths();
         update_lengths_times.push_back(time_counter.elapsed());
-        std::cout << "done! Update lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
+        std::cout << "done! \nUpdate lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
         std::cout << t+1 << "-th insertion correct!" << "\n";
 
         index_loops_size.push_back(kpll->loop_entries);
