@@ -26,14 +26,13 @@ size_t IncrementalTopK::
 NumOfVertex()        { return V; }
 
 bool IncrementalTopK::
-ConstructIndex(NetworKit::Graph graph, size_t K, bool directed){
+ConstructIndex(NetworKit::Graph* graph, size_t K, bool directed){
     Free();
-
     this->graph = graph;
-    this->V = graph.numberOfNodes();
-    //auto centr = new NetworKit::DegreeCentrality(graph);
-    uint32_t n_samples =  round(std::pow((unsigned int)graph.numberOfNodes(),55.0/100.0));
-    auto centr = new NetworKit::EstimateBetweenness(graph, n_samples,false,true);
+    this->V = graph->numberOfNodes();
+    auto centr = new NetworKit::DegreeCentrality(*graph);
+    //uint32_t n_samples =  round(std::pow((unsigned int)graph->numberOfNodes(),55.0/100.0));
+    //auto centr = new NetworKit::EstimateBetweenness(*graph, n_samples,false,true);
     centr->run();
     ordering.resize(V);
     reverse_ordering.resize(V);
@@ -43,7 +42,7 @@ ConstructIndex(NetworKit::Graph graph, size_t K, bool directed){
         reverse_ordering[s] = rank[s].first;
         //assert(rank[s].second == graph.degree(rank[s].first));
     }
-
+    delete centr;
     this->K = K;
     this->directed = directed;
 
@@ -152,7 +151,8 @@ Init(){
     tmp_s_count .resize(V);
     visited_in_update_loops.resize(V, INF8);
     for (int j = 0; j < 2; j++) tmp_dist_count[j].resize(V, 0);
-
+    loopcounter = 0;
+    labelscounter = 0;
     loop_count.resize(V);
 
     for (int dir = 0; dir < 1 + directed; dir++){
@@ -223,6 +223,7 @@ Labeling(){
     loop_count_time = -GetCurrentTimeSec();
     ProgressStream loop_bar(V);
     loop_bar.label() << "Loops construction";
+
     for(size_t v = 0; v < V; v++){
         CountLoops(v, status);
         ++loop_bar;
@@ -274,12 +275,13 @@ CountLoops(uint32_t s, bool &status){
             if (c == 0) continue;
 
             if (v == s){
+                loopcounter += dist+1 - loop_count[s].size();
                 loop_count[s].resize(dist + 1, 0);
                 loop_count[s][dist] += c;
                 count += c;
             }
             currently_reached_nodes++;
-            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+            graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
                 uint32_t to = ordering[u];
                 if (tmp_count[to] == 0){
                     updated.push_back(to);
@@ -312,7 +314,7 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
     int     curr = 0;
     int     next = 1;
     uint8_t dist = 0;
-
+    uint32_t countalloc = 0;
     std::queue<uint32_t> node_que[2];
     vector<uint32_t>     updated;
 
@@ -344,10 +346,11 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
                 // Make new label for a node v
                 tmp_offset[v] = dist;
                 AllocLabel(v, s, dist, c, rev);
+                countalloc++;
             }else{
                 ExtendLabel(v, s, dist, c, rev, 0);
             }
-            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+            graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
                 uint32_t to = ordering[u];
                 if(tmp_count[to] == 0){
                     updated.push_back(to);
@@ -365,6 +368,7 @@ PrunedBfs(uint32_t s, bool rev, bool &status){
         swap(curr, next);
         dist++;
     }
+    assert(countalloc <= V);
     ResetTempVars(s, updated, rev);
 };
 
@@ -384,7 +388,7 @@ UpdateLoops(std::pair<int, int> new_edge) {
         if(visited_in_update_loops[vertex] > K) continue;
         aff_cycles++;
         to_update.insert(vertex);
-        graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
+        graph->forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
             uint32_t to = ordering[u];
             if(visited_in_update_loops[to] == INF8 && to != ordering[b]){
                 q.push(to);
@@ -403,7 +407,7 @@ UpdateLoops(std::pair<int, int> new_edge) {
         if(visited_in_update_loops[vertex] > K) continue;
         aff_cycles++;
         to_update.insert(vertex);
-        graph.forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
+        graph->forNeighborsOf(reverse_ordering[vertex], [&](NetworKit::node u) {
             uint32_t to = ordering[u];
             if(visited_in_update_loops[to] == INF8){
                 q.push(to);
@@ -420,7 +424,7 @@ UpdateLoops(std::pair<int, int> new_edge) {
     for(uint32_t u: to_update){
         if(u > min_order) continue;
         uint32_t ordered_degree = 0;
-        graph.forNeighborsOf(reverse_ordering[u], [&](NetworKit::node neighbor){
+        graph->forNeighborsOf(reverse_ordering[u], [&](NetworKit::node neighbor){
             if(u < ordering[neighbor]) ordered_degree++;
             if(ordered_degree >= K) return;
         });
@@ -516,13 +520,13 @@ UpdateIndex(std::pair<int, int> new_edge) {
 
 void IncrementalTopK::
 AddEdge(uint32_t a, uint32_t b){
-    assert(!graph.hasEdge(a,b));
-    graph.addEdge(a,b);
+    //assert(!graph->hasEdge(a,b));
+    graph->addEdge(a,b);
 }
 
 void IncrementalTopK::
 RemoveEdge(uint32_t a, uint32_t b){
-    graph.removeEdge(a,b);
+    graph->removeEdge(a,b);
 }
 inline bool IncrementalTopK::
 Pruning(uint32_t v,  uint8_t d, bool rev){
@@ -588,7 +592,7 @@ ResumePBfs(uint32_t s, uint32_t t, uint8_t d, bool dir, bool &status,
             if(tmp_pruned[v]) continue;
 
             new_labels.emplace_back(v, s, dist, c, dir, tmp_offset[v]);
-            graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+            graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
                 uint32_t to = ordering[u];
                 if(tmp_count[to] == 0){
                     updated.push_back(to);
@@ -657,7 +661,7 @@ AllocLabel(uint32_t v, uint32_t start, uint8_t dist, uint8_t count, bool dir){
     idv.label_offset.push_back(make_pair(start,dist));
     idv.d_array.resize(idv.d_array.size()+1);
     idv.d_array[idv.label_offset.size()-1].resize(1,count);
-
+    labelscounter++;
 }
 
 inline void IncrementalTopK::
@@ -670,7 +674,7 @@ ExtendLabel(uint32_t v, uint32_t start, uint8_t dist, uint8_t count, bool dir, s
     if (idv.d_array[pos].size() > offset)
         idv.d_array[pos][offset] += count;
     else{
-        while(idv.d_array[pos].size() != offset) idv.d_array[pos].push_back(0);
+        while(idv.d_array[pos].size() != offset){ idv.d_array[pos].push_back(0); labelscounter ++;}
         idv.d_array[pos].push_back(count);
     }
     for(size_t p = 0; p < idv.label_offset.size(); p++){
@@ -747,7 +751,7 @@ void IncrementalTopK::modBFS(uint32_t s, uint32_t t, std::vector<int> &ret) {
         if (dist[v].size() >= K)  continue;
 
         dist[v].push_back(c);
-        graph.forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+        graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
             uint32_t to = ordering[u];
             que.push(make_pair(-(1 + c), to));
         });

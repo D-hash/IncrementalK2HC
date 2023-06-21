@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
     bic->run();
     auto g = bic->extractLargestConnectedComponent(raw_g,true);
     raw_g.~Graph();
+    delete bic;
     std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
     long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
     std::cout << "Number of insertions " << num_insertions << "\n";
@@ -131,14 +132,24 @@ int main(int argc, char **argv) {
 //        removed_edges.emplace_back((uint32_t) a, (uint32_t) b);
 //    }
 //    std::cout << "Edges after removal " << g.numberOfEdges() << '\n';
-
     IncrementalTopK* kpll = new IncrementalTopK();
-    kpll->ConstructIndex(g, K, directed);
+    kpll->ConstructIndex(&g, K, directed);
     std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()
               << "\n";
     std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
-
-    g.~Graph();
+    uint32_t lc = 0;
+    uint32_t labelc = 0;
+    for(size_t i = 0; i < kpll->NumOfVertex(); i++){
+        for(size_t j = 0; j < kpll->loop_count[i].size(); j++)
+            lc++;
+        for(size_t j = 0; j < kpll->index[0][i].d_array.size(); j ++)
+            labelc ++;
+    }
+    std::cout << "LC = " << lc << " - LoopCounter = " << kpll->loopcounter << "\n";
+    std::cout << "LabelC = " << labelc << " - LengthsCounter = " << kpll->labelscounter << "\n";
+    assert(lc == kpll->loopcounter);
+    assert(labelc == kpll->labelscounter);
+    //g.~Graph();
 
     std::ofstream ofs;
     ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_random.csv");
@@ -148,7 +159,7 @@ int main(int argc, char **argv) {
     ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,"
            "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
+    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph->numberOfEdges() << "," << K << "," << 0 << ","
         << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
         << 0 << ","
         << 0 << "," << 0 << "," << 0 <<"\n";
@@ -166,7 +177,7 @@ int main(int argc, char **argv) {
         uint32_t a = NetworKit::GraphTools::randomNode(g);
         uint32_t b = NetworKit::GraphTools::randomNode(g);
 
-        while(kpll->graph.hasEdge(a,b) || a == b){
+        while(kpll->graph->hasEdge(a,b) || a == b){
             a = NetworKit::GraphTools::randomNode(g);
             b = NetworKit::GraphTools::randomNode(g);
         }
@@ -246,8 +257,8 @@ int main(int argc, char **argv) {
     ProgressStream query_bar(num_queries);
     query_bar.label() << "Queries";
     for(int j=0; j<num_queries; j++){
-        int32_t u = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
-        int32_t v = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
+        int32_t u = NetworKit::GraphTools::randomNode(*scratch_kpll.graph);
+        int32_t v = NetworKit::GraphTools::randomNode(*scratch_kpll.graph);
         vector<int> up_dist;
         vector<int> sc_dist;
         double khl_query_time = -GetCurrentTimeInSec();
@@ -275,17 +286,17 @@ int main(int argc, char **argv) {
 
     std::cout << "Writing on csv file\n";
     for(size_t j = 0; j < num_insertions; j++) {
-        ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << j << ","
+        ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph->numberOfEdges() << "," << K << "," << j << ","
             << added_edges[j].first << "," << added_edges[j].second << ","  << update_loops[j] << "," << update_lengths[j] << "," << index_size[j] << ","
             << 0 << ","
             << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] <<"\n";
     }
 
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 20000 << ","
+    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph->numberOfEdges() << "," << K << "," << 20000 << ","
         << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << kpll->IndexSize() << ","
         << average(khl_time) << ","
         << median(khl_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
+    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph->numberOfEdges() << "," << K << "," << num_insertions << ","
         << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
         << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch\n";

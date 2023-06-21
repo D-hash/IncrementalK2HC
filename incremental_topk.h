@@ -34,7 +34,7 @@ public:
     int KDistanceQuery(int s, int t, std::vector<int> &ret){ return KDistanceQuery(s, t, K, ret); }
     int KDistanceQuery(int s, int t, uint8_t k);
     int KDistanceQuery(int s, int t){ return KDistanceQuery(s, t, K); }
-    bool   ConstructIndex(NetworKit::Graph graph, size_t K, bool directed);
+    bool   ConstructIndex(NetworKit::Graph* graph, size_t K, bool directed);
     void   AddEdge(uint32_t a, uint32_t b);
     void   RemoveEdge(uint32_t a, uint32_t b);
     void   UpdateLoops(std::pair<int, int>);
@@ -53,7 +53,12 @@ public:
 
     std::vector<uint32_t> ordering;
     std::vector<uint32_t> reverse_ordering;
-    NetworKit::Graph graph;
+    NetworKit::Graph* graph;
+
+    uint32_t loopcounter;
+    uint32_t labelscounter;
+    std::vector<std::vector<uint8_t> > loop_count;
+    std::vector<index_t> index[2];
 
 private:
     size_t V;
@@ -70,9 +75,7 @@ private:
     std::vector<uint32_t> reached_mbfs;
 
 
-    std::vector<std::vector<uint8_t> > loop_count;
     // index[0] corresponds to L_in. index[1] corresponds to L_out
-    std::vector<index_t> index[2];
 
     std::vector<bool>     tmp_pruned;
     std::vector<uint32_t> tmp_offset;

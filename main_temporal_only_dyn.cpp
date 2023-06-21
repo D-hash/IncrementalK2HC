@@ -150,8 +150,7 @@ int main(int argc, char **argv) {
 
     std::ofstream ofs;
     ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_only_dyn.csv");
-    ofs << "Graph,Vertices,Edges,K,Insertions,"
-           "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
+    ofs << "Graph,Vertices,Edges,K,Insertions,ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
            "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
     ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
         << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
