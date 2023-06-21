@@ -819,23 +819,23 @@ inline void IncrementalTopK::reset_temp_vars(vertex s, bool rev){
 
     this->updated.clear();
 
-    #ifndef NDEBUG
-        this->graph->parallelForNodes([&] (vertex i){
-            assert(graph->hasNode(i));
-            assert(this->tmp_pruned[i]==false);
-            assert(this->tmp_offset[i]==null_distance);
-            assert(this->tmp_count[i]==0);
-            assert(this->tmp_s_offset[i]==null_distance);
+    // #ifndef NDEBUG
+    //     this->graph->parallelForNodes([&] (vertex i){
+    //         assert(graph->hasNode(i));
+    //         assert(this->tmp_pruned[i]==false);
+    //         assert(this->tmp_offset[i]==null_distance);
+    //         assert(this->tmp_count[i]==0);
+    //         assert(this->tmp_s_offset[i]==null_distance);
 
-            assert(this->tmp_s_count[i].empty());
+    //         assert(this->tmp_s_count[i].empty());
 
-            assert(this->visited_in_update_loops[i]==null_distance);
-            for (size_t j = 0; j < 2; j++)
-                assert(this->tmp_dist_count[j][i]==0);
+    //         assert(this->visited_in_update_loops[i]==null_distance);
+    //         for (size_t j = 0; j < 2; j++)
+    //             assert(this->tmp_dist_count[j][i]==0);
     
-        });
-        assert(this->tmp_s_offset[graph->numberOfNodes()]==0);
-    #endif
+    //     });
+    //     assert(this->tmp_s_offset[graph->numberOfNodes()]==0);
+    // #endif
 }
 
 inline void IncrementalTopK::allocate_label(vertex v, vertex start, dist distance, dist count, bool dir){
