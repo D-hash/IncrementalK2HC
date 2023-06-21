@@ -10,287 +10,371 @@
 #include "incremental_topk.h"
 #include <string>
 #include <bits/stdc++.h>
-#include "networkit/io/EdgeListReader.hpp"
+#include <boost/program_options.hpp>
 #include "networkit/components/ConnectedComponents.hpp"
-#include "networkit/centrality/Closeness.hpp"
-#include "networkit/graph/GraphTools.hpp"
+#include <networkit/graph/GraphTools.hpp>
+#include "mytimer.h"
+#include "GraphManager.hpp"
+#include <networkit/distance/Diameter.hpp>
 
 using namespace std;
-
-double median(vector<double> &a) {
-    int n = a.size();
-    // If size of the arr[] is even
+double median(std::vector<double>& arr) { //SORTS
+    size_t n = arr.size() / 2;
     if (n % 2 == 0) {
-
-        // Applying nth_element
-        // on n/2th index
-        nth_element(a.begin(),
-                    a.begin() + n / 2,
-                    a.end());
-
-        // Applying nth_element
-        // on (n-1)/2 th index
-        nth_element(a.begin(),
-                    a.begin() + (n - 1) / 2,
-                    a.end());
-
-        // Find the average of value at
-        // index N/2 and (N-1)/2
-        return (double) (a[(n - 1) / 2]
-                         + a[n / 2])
-               / 2.0;
+        std::nth_element(arr.begin(),arr.begin() + n/2,arr.end());
+        std::nth_element(arr.begin(),arr.begin() + (n - 1) / 2,arr.end());
+        return (double) (arr[(n-1)/2]+ arr[n/2])/2.0;
     }
 
-        // If size of the arr[] is odd
-    else {
-
-        // Applying nth_element
-        // on n/2
-        nth_element(a.begin(),
-                    a.begin() + n / 2,
-                    a.end());
-
-        // Value at index (N/2)th
-        // is the median
-        return (double) a[n / 2];
+    else{
+        std::nth_element(arr.begin(),arr.begin() + n / 2,arr.end());
+        return (double) arr[n/2];
     }
+    assert(false);
 }
 
 
-double GetCurrentTimeInSec(){
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + tv.tv_usec * 1e-6;
-}
 
-double average(std::vector<double> const& v){
-    if(v.empty()){
-        return 0;
-    }
+double average(std::vector<double> & arr) {
 
-    auto const count = static_cast<double>(v.size());
+    auto const count = static_cast<double>(arr.size());
     double sum = 0;
-    for(double time: v) sum += time;
+    for(double value: arr) sum += value;
     return sum / count;
 }
 
-void read_graph(const string graph_file, vector<pair<uint32_t , uint32_t> > &es){
-    ifstream ifs(graph_file);
-    if (!ifs.good()){
-        cerr << "Error: Cannot open " << graph_file << "." << endl;
-        exit(EXIT_FAILURE);
-    }
-
-    es.clear();
-    for (uint32_t u, v; ifs >> u >> v;){
-        es.push_back(make_pair(u, v));
-    }
-
-    ifs.close();
-}
 
 int main(int argc, char **argv) {
     srand (time(NULL));
-    if (argc != 5) {
-        cerr << "Usage: " << argv[0] << " (graph_file) (K) (D) (I)" << endl;
-        exit(EXIT_FAILURE);
+    
+    //declare supported options
+	namespace po = boost::program_options;
+	po::options_description desc("Allowed options");
+	
+	desc.add_options()
+	("graph_location,g", po::value<std::string>(), "Input Graph File Location")
+	("k_paths,k", po::value<int>(), "Number of Top Paths to Compute")
+	("num_insertions,n", po::value<int>(), "Number of Insertions to Be Performed")
+    ("num_queries,q", po::value<int>(), "Number of Queries to Be Performed")
+	("directed,d",po::value<int>(), "[FALSE(0) TRUE(1)]")
+	("ordering,o",po::value<int>(), "Type of Node Ordering [DEGREE(0) APPROX-BETWEENESS(1) k-PATH(2)]")
+	;
+
+    po::variables_map vm;
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::notify(vm);
+    if(vm.empty()){
+		std::cout << desc << "\n";
+		throw std::runtime_error("empty argument array");
+	}
+	std::string graph_location;
+	
+    if(vm.count("graph_location")){
+		graph_location = vm["graph_location"].as<std::string>();
     }
 
-    string  graph_file = argv[1];
-    const size_t  K          = atoi(argv[2]);
-    const bool    directed   = atoi(argv[3]) != 0;
-    long long int    input_ins   = atoi(argv[4]);
-    std:cout << "Starting on " << graph_file << " with K= " << K << "\n";
-    NetworKit::EdgeListReader* elr = new NetworKit::EdgeListReader(' ', 0);
-    NetworKit::Graph raw_g = elr->read(graph_file);
-    raw_g.removeSelfLoops();
-    raw_g.removeMultiEdges();
-    NetworKit::ConnectedComponents *bic = new NetworKit::ConnectedComponents(raw_g);
-    bic->run();
-    auto g = bic->extractLargestConnectedComponent(raw_g,true);
-    raw_g.~Graph();
-    std::cout << "Graph with " << g.numberOfNodes() << " vertices and " << g.numberOfEdges() << " edges.\n";
-    long long int num_insertions = std::min((long long int)(input_ins), (long long int)(g.numberOfNodes()*(g.numberOfNodes()-1)/2 - g.numberOfEdges()));
+    
+    int K = -1;
+
+	if (vm.count("k_paths")){
+		K = vm["k_paths"].as<int>();
+    }
+
+	if (K < 2){
+		std::cout << desc << "\n";
+		throw std::runtime_error("K must be at least 2");
+	}
+
+    int ordering = -1; 
+
+	if (vm.count("ordering")){
+		ordering = vm["ordering"].as<int>();
+	}
+	if(ordering != 0 && ordering != 1 && ordering != 2){
+		std::cout << desc << "\n";
+		throw std::runtime_error("Wrong ordering selection (0 or 1 or 2)");
+	}
+
+    int num_insertions = -1;
+	
+    if (vm.count("num_insertions")){
+		num_insertions = vm["num_insertions"].as<int>();
+	}
+	if(num_insertions < 2){
+		std::cout << desc << "\n";
+		throw std::runtime_error("Wrong num_insertions");
+	}
+
+    int num_queries = -1;
+	if (vm.count("num_queries")){
+		num_queries = vm["num_queries"].as<int>();
+	}
+	if(num_queries < 2){
+		std::cout << desc << "\n";
+		throw std::runtime_error("Wrong num queries");
+	}
+
+	int directed = -1;
+	if (vm.count("directed")){
+		directed = vm["directed"].as<int>();
+	}
+	if(directed != 0 && directed !=1){
+		std::cout << desc << "\n";
+		throw std::runtime_error("Wrong directed selection");
+	}
+    
+    if(directed==0){
+        std::cout << "Graph is undirected\n";
+    }
+    else{ 
+        throw std::runtime_error("not yet implemented");
+
+    }
+    
+    std::cout << "Reading " << graph_location << " building with K = " << K << " num_queries = "<<num_queries<<" ordering "<<ordering<<"\n";
+
+
+    // LETTURA
+    NetworKit::Graph *graph = new NetworKit::Graph();
+
+
+	if(graph_location.find(".hist") != std::string::npos){
+		GraphManager::read_hist(graph_location,&graph);
+	}
+	else if(graph_location.find(".nde") != std::string::npos || graph_location.find(".el") != std::string::npos){
+		GraphManager::read_nde(graph_location,&graph);
+
+	}
+	else{
+		throw std::runtime_error("Unsupported graph file format");
+	}
+
+	*graph = NetworKit::GraphTools::toUnweighted(*graph);
+	*graph = NetworKit::GraphTools::toUndirected(*graph);
+
+	const NetworKit::Graph& graph_handle = *graph;
+	NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
+	*graph = cc->extractLargestConnectedComponent(graph_handle, true);
+    graph->shrinkToFit();
+    graph->indexEdges();
+	std::cout<<"Graph after CC has "<<graph->numberOfNodes()<<" vertices and "<<graph->numberOfEdges()<<" edges\n";
+    double density = NetworKit::GraphTools::density(*graph);
+    NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle,NetworKit::DiameterAlgo::EXACT,0.0);
+    dm->run();
+
+    
+    double diameter = dm->getDiameter().first;
+    delete dm;
+    
+	std::cout<<"Density: "<<density<<"\n";
+	std::cout<<"Diameter: "<<diameter<<"\n";
+    
+    if(num_insertions>=graph->numberOfEdges()){
+        num_insertions=graph->numberOfEdges();
+    }
     std::cout << "Number of insertions " << num_insertions << "\n";
-    std::cout << "Removing " << num_insertions << " edges\n";
-    vector<pair<uint32_t, uint32_t> > removed_edges;
+    
+    std::cout << "Removal of " << num_insertions << " edges\n";
+
+    edge_id original_n_edges = graph->numberOfEdges();
+    std::vector<std::pair<vertex,vertex>> removed_edges;
+    
+    uint16_t attempts = 0;
     for(size_t i = 0; i < num_insertions; i++){
-        uint32_t a = NetworKit::GraphTools::randomNode(g);
-        uint32_t b = NetworKit::GraphTools::randomNeighbor(g,a);
 
-        g.removeEdge(a,b);
-        bic = new NetworKit::ConnectedComponents(g);
-        bic->run();
-        while(bic->numberOfComponents()>1){
-            g.addEdge(a,b);
-            a = NetworKit::GraphTools::randomNode(g);
-            b = NetworKit::GraphTools::randomNeighbor(g,a);
-            g.removeEdge(a,b);
-            bic->run();
+        vertex a = NetworKit::GraphTools::randomNode(*graph);
+        vertex b = NetworKit::GraphTools::randomNeighbor(*graph,a);
+
+        graph->removeEdge(a,b);
+        attempts = 0;
+        cc->run();
+        while(cc->numberOfComponents()>1){
+            attempts+=1;
+            graph->addEdge(a,b);
+            a = NetworKit::GraphTools::randomNode(*graph);
+            b = NetworKit::GraphTools::randomNeighbor(*graph,a);
+            graph->removeEdge(a,b);
+            cc->run();
+            if(attempts>graph->numberOfEdges())
+                throw new std::runtime_error("experiment fails, too many removals, cc cannot be preserved");
         }
-        removed_edges.emplace_back((uint32_t) a, (uint32_t) b);
+        removed_edges.push_back(std::make_pair(a,b));
     }
-    std::cout << "Edges after removal " << g.numberOfEdges() << '\n';
+    assert(graph->numberOfEdges()==original_n_edges-removed_edges.size());
+    std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
 
-    IncrementalTopK* kpll = new IncrementalTopK();
-    kpll->ConstructIndex(g, K, directed);
-    std::cout << "First Labeling Loop time: " << kpll->LoopCountTime() << "s | First Labeling Indexing time:" << kpll->IndexingTime()
-              << "\n";
-    std::cout << "Number Vertices: " << kpll->NumOfVertex() << "\n";
+    IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering);
 
-    g.~Graph();
+    kpll->build();
+    
+    std::cout << "First Labeling Loop time: " << kpll->loops_time << " s | First Labeling Indexing time: " << kpll->lengths_time<< " s\n";
+    std::cout << "First Labeling Loop entries: " << kpll->loop_entries<<" First Labeling Length Entries: "<<kpll->length_entries<< "\n";
+    std::cout << "Number of Vertices: " << graph->numberOfNodes() << "\n";
 
-    std::ofstream ofs;
-    ofs.open(graph_file+"_"+std::to_string(K)+"_"+std::to_string(num_insertions)+"_remove_add.csv");
-//    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,SLLoopTime,"
-//           "SLLabelingTime,SLSize,ULLoopTime,ULLabelingTime,ULSize,DiffAvgIndexSize,ULMeanQueryTime,SLMeanQueryTime,"
-//           "ULMedianQueryTime,SLMedianQueryTime,AffectedHubs,ReachedNodes\n";
-    ofs << "Graph,Vertices,Edges,K,Insertions,NewEdgeX,NewEdgeY,"
-           "ULLoopTime,ULLabelingTime,ULSize,ULMeanQueryTime,"
-           "ULMedianQueryTime,AffectedHubs,ReachedNodes\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << 0 << ","
-        << 0 << "," << 0 << ","  << kpll->LoopCountTime() << "," << kpll->IndexingTime() << "," << kpll->IndexSize() << ","
-        << 0 << ","
-        << 0 << "," << 0 << "," << 0 <<"\n";
-    int num_queries = 100000;
+    std::string order_string;
 
-    std::vector<double> update_loops;
-    std::vector<double> update_lengths;
-    std::vector<double> avg_index_size;
-    std::vector<size_t> index_size;
+    switch(ordering){
+        case (0):
+            order_string = "DEG";
+            break;
+        case (1):
+            order_string = "BET";
+            break;
+        case (2):
+            order_string = "KPT";
+            break;
+        default:
+            throw new std::runtime_error("problem");
+
+    
+    }
+    //timestring
+    std::time_t rawtime;
+    std::tm* timeinfo;
+    char buffer [80];
+
+    std::time(&rawtime);
+    timeinfo = std::localtime(&rawtime);
+    std::strftime(buffer,80,"%d-%m-%Y-%H-%M-%S",timeinfo);
+    std::string tmp_time = buffer;   
+	std::string shortenedName = graph_location.substr(0, 16);
+    stringstream string_object_name;
+    string_object_name<<K;
+    std::string k_string,n_insert_string;
+    string_object_name>>k_string;
+    string_object_name<<num_insertions;
+    string_object_name>>n_insert_string;
+	std::string timestampstring = shortenedName+"_"+k_string+"_"+n_insert_string+"_"+order_string+"_"+tmp_time;
+
+	std::string logFile = timestampstring +"_remove_add.csv";
+    
+
+    std::ofstream ofs(logFile);
+
+
+    ofs << "G,V,E,K,Insertions,x,y,UTLoops,UTLengths,ULoopsSize,ULengthSize,UAvgQT,UMedQT,aff,reached\n";
+    ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << 0 << ","
+        << 0 << "," << 0 << ","  << kpll->loops_time << "," << kpll->lengths_time << "," << kpll->loop_entries << "," << kpll->length_entries << ","
+        << 0 << "," << 0 << "," << 0 << "," << 0 <<"\n";
+    
+
+    std::vector<double> update_loops_times;
+    std::vector<double> update_lengths_times;
+    
+
+    std::vector<size_t> index_loops_size;
+    std::vector<size_t> index_lengths_size;
+
+    
     std::vector<uint32_t> affected_hubs;
     std::vector<double> reached_nodes;
-    std::vector<pair<uint32_t, uint32_t>> added_edges;
-    //for(int i=0; i < num_insertions; i++){
-    int i = 0;
-    for(auto edge: removed_edges){
-//        uint32_t a = NetworKit::GraphTools::randomNode(g);
-//        uint32_t b = NetworKit::GraphTools::randomNode(g);
+    std::vector<pair<vertex, vertex>> added_edges;
 
-//        while(kpll->graph.hasEdge(a,b) || a == b){
-//            a = NetworKit::GraphTools::randomNode(g);
-//            b = NetworKit::GraphTools::randomNode(g);
-//        }
-        uint32_t a = edge.first;
-        uint32_t b = edge.second;
-        std::cout << "New edge " << a << " " << b << "\n";
-        // g.addEdge(a,b);
-//        IncrementalTopK scratch_kpll;
-//        scratch_kpll.ConstructIndex(g, K, directed);
-//        std::cout << "Scracth Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch Indexing time:"
-//                  << scratch_kpll.IndexingTime()
-//                  << "\n";
-        std::cout << "Updating first labeling.. \n";
-        double ul_loops = -GetCurrentTimeInSec();
-        kpll->UpdateLoops(make_pair(a,b));
-        ul_loops += GetCurrentTimeInSec();
-        double ul_labeling = -GetCurrentTimeInSec();
-        kpll->UpdateIndex(make_pair(a,b));
-        ul_labeling += GetCurrentTimeInSec();
-        std::cout << "Update index time: " << ul_labeling << " | Update loops time: " << ul_loops << "\n";
-//        vector<double> sl_time, ul_time, bfs_time;
-//        ProgressStream query_bar(num_queries);
-//        query_bar.label() << "Queries";
-//        for(int j=0; j<num_queries; j++){
-//            int32_t u = NetworKit::GraphTools::randomNode(g);
-//            int32_t v = NetworKit::GraphTools::randomNode(g);
-//            vector<int> up_dist;
-//            //vector<int> sc_dist;
-//            double up = -GetCurrentTimeInSec();
-//            kpll->KDistanceQuery(u, v, up_dist);
-//            up += GetCurrentTimeInSec();
-//            ul_time.push_back(up);
-//            double scratch = -GetCurrentTimeInSec();
-//            //scratch_kpll.KDistanceQuery(u, v, sc_dist);
-//            scratch += GetCurrentTimeInSec();
-//            sl_time.push_back(scratch);
-////            assert(up_dist.size() == sc_dist.size());
-////            for(size_t l=0; l < up_dist.size(); l++){
-////                if(up_dist[l] != sc_dist[l]){
-////                    std::cout << "Error bw " << u << "-" << v << "\n";
-////                    std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
-////                    std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
-////                    for(size_t id=0; id < up_dist.size(); id++){
-////                        std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
-////                    }
-////                    assert(false);
-////                }
-////            }
-//            ++query_bar;
-//        }
-        std::cout << i+1 << "-th insertion correct!" << "\n";
-        //std::cout << "UL avg query time " << average(ul_time) << "\n";
-//        std::cout << "SL avg query time " << average(sl_time) << "\n";
-//        ofs << graph_file << "," << kpll->NumOfVertex() << "," << es.size() << "," << K << "," << i+1 << ","
-//            << a << "," << b << "," << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << ","
-//            << scratch_kpll.IndexSize() << "," << ul_loops << "," << ul_labeling << "," << kpll->IndexSize() << ","
-//            << kpll->AvgIndexSize() - scratch_kpll.AvgIndexSize() << "," << average(ul_time) << ","
-//            << average(sl_time) << ","  << median(ul_time) << "," << median(sl_time) << "," << kpll->AffectedHubs()
-//            << "," << kpll->ReachedNodes() <<"\n";
-        update_loops.push_back(ul_loops);
-        update_lengths.push_back(ul_labeling);
-        //avg_index_size.push_back(kpll->AvgIndexSize());
-        index_size.push_back(0);
-        affected_hubs.push_back(kpll->AffectedHubs());
-        reached_nodes.push_back(kpll->ReachedNodes());
-        added_edges.emplace_back(a,b);
-        i++;
+
+    mytimer time_counter;
+
+    for(size_t t=0;t<removed_edges.size();t++){
+
+        kpll->x = removed_edges[t].first;
+        kpll->y = removed_edges[t].second;
+        std::cout << "New edge " << kpll->x << " " << kpll->y << "\n";
+
+        std::cout << "Updating loops...";
+        time_counter.restart();
+        kpll->update_loops();
+        update_loops_times.push_back(time_counter.elapsed());
+        std::cout<<"done! Update loops time: " << time_counter.elapsed() << "\n"<<std::flush;
+        std::cout << "Updating lengths...";
+        time_counter.restart();
+        kpll->update_lengths();
+        update_lengths_times.push_back(time_counter.elapsed());
+        std::cout << "done! Update lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
+        std::cout << t+1 << "-th insertion correct!" << "\n";
+
+        index_loops_size.push_back(kpll->loop_entries);
+        index_lengths_size.push_back(kpll->length_entries);
+
+        affected_hubs.push_back(kpll->aff_hubs);
+        reached_nodes.push_back(kpll->n_reached_nodes());
+        added_edges.push_back(removed_edges[t]);
+        
     }
+    assert(added_edges.size()==removed_edges.size());
 
-    IncrementalTopK scratch_kpll;
-    // assert(g.numberOfEdges() == kpll->graph.numberOfEdges());
-    scratch_kpll.ConstructIndex(kpll->graph, K, directed);
-    std::cout << "Scratch LB Loop time: " << scratch_kpll.LoopCountTime() << "s | Scratch LB Indexing time:"
-              << scratch_kpll.IndexingTime()
-              << "\n";
-    vector<double> sl_time;
-    vector<double> khl_time;
+    IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering);
+
+    scratch_kpll->build();
+
+    std::cout << "From Scratch Loop time: " << scratch_kpll->loops_time << " s | From Scratch Indexing time: "<< scratch_kpll->lengths_time<< " s\n";
+    std::cout << "From Scratch Loop entries: " << scratch_kpll->loop_entries<<" From Scratch Length Entries: "<<scratch_kpll->length_entries<< "\n";
+    std::vector<double> sl_time;
+    std::vector<double> khl_time;
     ProgressStream query_bar(num_queries);
+    
     query_bar.label() << "Queries";
-    for(int j=0; j<num_queries; j++){
-        int32_t u = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
-        int32_t v = NetworKit::GraphTools::randomNode(scratch_kpll.graph);
-        vector<int> up_dist;
-        vector<int> sc_dist;
-        double khl_query_time = -GetCurrentTimeInSec();
-        kpll->KDistanceQuery(u, v, up_dist);
-        khl_query_time += GetCurrentTimeInSec();
-        khl_time.push_back(khl_query_time);
-        double scratch = -GetCurrentTimeInSec();
-        scratch_kpll.KDistanceQuery(u, v, sc_dist);
-        scratch += GetCurrentTimeInSec();
-        sl_time.push_back(scratch);
-        assert(up_dist.size() == sc_dist.size());
-        for(size_t l=0; l < up_dist.size(); l++){
-            if(up_dist[l] != sc_dist[l]){
+    size_t l;
+    std::vector<dist> update_distances;
+    std::vector<dist> from_scratch_distances;
+
+    for(uint64_t j=0; j<num_queries; j++){
+        vertex u = NetworKit::GraphTools::randomNode(*graph);
+        vertex v = NetworKit::GraphTools::randomNode(*graph);
+
+        
+        time_counter.restart();
+        kpll->query(u, v, update_distances);
+        khl_time.push_back(time_counter.elapsed());
+        time_counter.restart();
+
+        scratch_kpll->query(u, v, from_scratch_distances);
+        sl_time.push_back(time_counter.elapsed());
+        
+        if(update_distances.size() != from_scratch_distances.size()){
+            throw new std::runtime_error("cardinality problem");
+        }
+        for(l=0; l < update_distances.size(); l++){
+            if(update_distances[l] != from_scratch_distances[l]){
                 std::cout << "Error bw " << u << "-" << v << "\n";
-                std::cout << "Updated labeling distance: " << up_dist[l] << "\n";
-                std::cout << "Scratch labeling distance: " << sc_dist[l] << "\n";
-                for(size_t id=0; id < up_dist.size(); id++){
-                    std:: cout << "Up " << up_dist[id] << " | Scratch " << sc_dist[id] << "\n";
+                std::cout << "Updated labeling distance: " << update_distances[l] << "\n";
+                std::cout << "Scratch labeling distance: " << from_scratch_distances[l] << "\n";
+                for(size_t id=0; id < update_distances.size(); id++){
+                    std:: cout << "Up " << update_distances[id] << " | Scratch " << from_scratch_distances[id] << "\n";
                 }
-                assert(false);
+                throw new std::runtime_error("correctness problem");
             }
         }
         ++query_bar;
     }
-    std::cout << "Writing on csv file\n";
+    std::cout << "Writing CSV file...";
     for(size_t j = 0; j < num_insertions; j++) {
-        ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << j << ","
-            << added_edges[j].first << "," << added_edges[j].second << ","  << update_loops[j] << "," << update_lengths[j] << "," << index_size[j] << ","
-            << 0 << ","
-            << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] <<"\n";
+        ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << j << ","
+            << added_edges[j].first << "," << added_edges[j].second << ","  << update_loops_times[j] << "," << update_lengths_times[j] << "," << index_loops_size[j] << "," << index_lengths_size[j] << ","
+            << 0 << "," << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] <<"\n";
     }
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << i+1 << ","
-        << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << kpll->IndexSize() << ","
+    ofs << graph_location << "," 
+        << graph->numberOfNodes() << "," 
+        << graph->numberOfEdges() << "," 
+        << K << "," 
+        << removed_edges.size()+1 << ","
+        << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << kpll->loop_entries << "," << kpll->length_entries << ","
         << average(khl_time) << ","
-        << median(khl_time) << "," << kpll->AffectedHubs() << "," << kpll->ReachedNodes() <<"\n";
-    ofs << graph_file << "," << kpll->NumOfVertex() << "," << kpll->graph.numberOfEdges() << "," << K << "," << num_insertions << ","
-        << "scratch" << "," << "scratch" << ","  << scratch_kpll.LoopCountTime() << "," << scratch_kpll.IndexingTime() << "," << scratch_kpll.IndexSize() << ","
+        << median(khl_time) << "," 
+        << kpll->aff_hubs << "," 
+        << kpll->n_reached_nodes() <<"\n";
+
+    ofs << graph_location << "," 
+        << graph->numberOfNodes() << "," 
+        << graph->numberOfEdges() << "," 
+        << K << "," 
+        << num_insertions << ","
+        << "scratch" << "," << "scratch" << ","  << scratch_kpll->loops_time << "," << scratch_kpll->lengths_time << "," << scratch_kpll->loop_entries << "," << scratch_kpll->length_entries << ","
         << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch\n";
-    std::cout << "Writing done!\n";
-    ofs.close();
+    std::cout << "done!\n";
+    ofs.close();    
+    delete graph;
+    delete kpll;
+    delete scratch_kpll;
 
 
     exit(EXIT_SUCCESS);
