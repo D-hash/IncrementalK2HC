@@ -65,7 +65,7 @@ public:
     void deallocate_aux();
 
 private:
-    std::vector<vertex> updated;
+    std::set<vertex> updated;
     std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
     std::set<vertex> vertices_to_update;
     bool is_from_scratch_only;
