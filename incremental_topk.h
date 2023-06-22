@@ -19,8 +19,8 @@
 #include <string>
 #include "mytimer.h"
 
-using vertex = int64_t;
-using dist = uint16_t;
+using vertex = uint32_t;
+using dist = uint32_t;
 using edge_id = uint64_t;
 
 class IncrementalTopK{
