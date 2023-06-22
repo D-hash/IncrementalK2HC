@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
     std::vector<size_t> index_lengths_size;
 
     
-    std::vector<uint32_t> affected_hubs;
+    std::vector<vertex> affected_hubs;
     std::vector<double> reached_nodes;
     std::vector<pair<vertex, vertex>> added_edges;
 
