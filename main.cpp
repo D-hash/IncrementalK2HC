@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
 
         scratch_kpll->query(u, v, from_scratch_distances);
         sl_time.push_back(time_counter.elapsed());
-        
+
         if(update_distances.size() != from_scratch_distances.size()){
             throw new std::runtime_error("cardinality problem");
         }

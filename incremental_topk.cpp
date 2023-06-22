@@ -918,10 +918,10 @@ inline void IncrementalTopK::extend_label(vertex v, vertex start, dist distance,
     }
     int ol_size = 0;
     for(size_t p = 0; p < idv.label_offset.size(); p++){
-        vertex tot_count = 0;
+        total = 0;
         for(size_t i = 0; i < idv.d_array[p].size(); i++){
-            tot_count += idv.d_array[p][i];
-            if(tot_count >= K){
+            total += idv.d_array[p][i];
+            if(total >= K){
                 ol_size = idv.d_array[p].size();
                 idv.d_array[p].resize(i+1);
                 length_entries+=(idv.d_array[p].size()-ol_size);
@@ -967,10 +967,10 @@ inline void IncrementalTopK::extend_label_repair(vertex v, vertex start, dist di
         idv.label_offset.insert(idv.label_offset.begin()+last, std::make_pair(start,distance));
         idv.d_array.insert(idv.d_array.begin() + last, {count});
         for(size_t p = 0; p < idv.label_offset.size(); p++){
-            vertex tot_count = 0;
+            total = 0;
             for(size_t i = 0; i < idv.d_array[p].size(); i++){
-                tot_count += idv.d_array[p][i];
-                if(tot_count >= K){
+                total += idv.d_array[p][i];
+                if(total >= K){
                     idv.d_array[p].resize(i+1);
                     break;
                 }

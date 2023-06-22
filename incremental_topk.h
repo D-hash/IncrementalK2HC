@@ -19,7 +19,7 @@
 #include <string>
 #include "mytimer.h"
 
-using vertex = int32_t;
+using vertex = int64_t;
 using dist = uint16_t;
 using edge_id = uint64_t;
 
@@ -87,7 +87,7 @@ private:
     std::vector<vertex> ordering;
     std::vector<vertex> reverse_ordering;
     std::vector<std::pair<double,vertex> > ordering_rank;
-
+    vertex total;
     NetworKit::Graph * graph;
     dist K;
     bool directed;
