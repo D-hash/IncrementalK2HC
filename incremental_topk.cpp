@@ -424,6 +424,7 @@ void IncrementalTopK::query(vertex s, vertex t, std::vector<dist> & container){
                         c_tmp = loop_labels[W][m] - (m ? loop_labels[W][m-1] : 0);
                         if (count.size() <= d_tmp){
                             count.resize(d_tmp + 1, 0);
+                            count.shrink_to_fit();
                         }
                         count[d_tmp] += (vertex)ids.d_array[pos1][i] * idt.d_array[pos2][j] * c_tmp;
                     }
@@ -580,6 +581,8 @@ void IncrementalTopK::update_loops() {
     for(it=reset_visited.begin();it!=reset_visited.end();it++){
         this->visited_in_update_loops[*it] = null_distance;
     }
+    reset_visited.clear();
+    
     this->visited_in_update_loops[ordering[this->x]] = null_distance;
     this->visited_in_update_loops[ordering[this->y]] = null_distance;
     #ifndef NDEBUG
@@ -618,7 +621,8 @@ void IncrementalTopK::update_lengths() {
     
     this->old_distances_a.resize(idva.d_array.size());
     this->old_distances_b.resize(idvb.d_array.size());
-    
+    this->old_distances_a.shrink_to_fit();
+    this->old_distances_b.shrink_to_fit();
     for(size_t i = 0; i < idva.d_array.size(); i++){
         for(size_t j = 0; j < idva.d_array[i].size(); j++){
             this->old_distances_a[i].push_back(idva.d_array[i][j]);
@@ -816,7 +820,7 @@ inline void IncrementalTopK::set_temp_vars(vertex s, bool rev){
         }
         
         this->tmp_s_count[w].resize(tmp_v.size() + loop_labels[w].size() - 1, 0);
-
+        this->tmp_s_count[w].shrink_to_fit();
         for(size_t i = 0; i < tmp_v.size(); i++){
             for(size_t j = 0; j < loop_labels[w].size(); j++){
                 this->tmp_s_count[w][i+j] += this->tmp_v[i] * this->loop_labels[w][j];
@@ -874,8 +878,9 @@ inline void IncrementalTopK::allocate_label(vertex v, vertex start, dist distanc
     length_entries++;
     int old_size = idv.d_array.size();
     idv.d_array.resize(idv.d_array.size()+1);
+    idv.d_array.shrink_to_fit();
     idv.d_array[idv.label_offset.size()-1].resize(1,count);
-    
+    idv.d_array[idv.label_offset.size()-1].shrink_to_fit();
     length_entries+=(idv.d_array.size()-old_size);
 
 }
@@ -925,6 +930,8 @@ inline void IncrementalTopK::extend_label(vertex v, vertex start, dist distance,
             if(total >= K){
                 ol_size = idv.d_array[p].size();
                 idv.d_array[p].resize(i+1);
+                idv.d_array[p].shrink_to_fit();
+
                 length_entries+=(idv.d_array[p].size()-ol_size);
                 break;
             }
@@ -951,6 +958,8 @@ inline void IncrementalTopK::extend_label_repair(vertex v, vertex start, dist di
     else if(idv.label_offset[last].first == start){
         if(idv.label_offset[last].second > distance){
             idv.d_array[last].resize(idv.d_array[last].size() + idv.label_offset[last].second-distance, 0); // todo consider dequeue
+            idv.d_array[last].shrink_to_fit();
+
             size_t rev = 0;
             for(rev = idv.d_array[last].size()-1; rev > 0; rev--){
                 idv.d_array[last][rev] = idv.d_array[last][rev-(idv.label_offset[last].second-distance)];
@@ -973,6 +982,7 @@ inline void IncrementalTopK::extend_label_repair(vertex v, vertex start, dist di
                 total += idv.d_array[p][i];
                 if(total >= K){
                     idv.d_array[p].resize(i+1);
+                    idv.d_array[p].shrink_to_fit();
                     break;
                 }
             }
