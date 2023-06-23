@@ -326,7 +326,7 @@ inline void IncrementalTopK::compute_loop_entries(vertex s){
 }
 
 
-void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
+inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
     
     set_temp_vars(s, reversed);
 
@@ -452,7 +452,7 @@ void IncrementalTopK::query(vertex s, vertex t, std::vector<dist> & container){
     //return container.size() < this->K ? INT_MAX : 0;
 }
 
-void IncrementalTopK::verify_sizes(){
+inline void IncrementalTopK::verify_sizes(){
     
     vertex sz = 0;
     for(vertex i=0;i<graph->numberOfNodes();i++){
@@ -731,7 +731,7 @@ inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
     }
     return false;
 }
-void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
+inline void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
     
     set_temp_vars(s, rev);
 

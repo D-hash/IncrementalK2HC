@@ -20,8 +20,8 @@
 #include "mytimer.h"
 
 using vertex = uint32_t;
-using dist = uint32_t;
-using edge_id = uint64_t;
+using dist = uint16_t;
+using edge_id = uint32_t;
 
 class IncrementalTopK{
         struct index_t{
