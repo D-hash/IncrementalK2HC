@@ -27,6 +27,14 @@ class IncrementalTopK{
         struct index_t{
             std::vector<std::pair<vertex,dist>> label_offset;
             std::vector<std::vector<dist>> d_array;
+            index_t(){
+                label_offset.clear();
+                d_array.clear();
+            }
+            ~index_t(){
+                label_offset.clear();
+                d_array.clear();
+            }
         };
 
 public:
@@ -67,7 +75,7 @@ public:
 private:
     std::vector<dist> dists;
     std::set<vertex> updated;
-    std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
+    std::queue<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
     std::set<vertex> vertices_to_update;
     bool is_from_scratch_only;
     std::vector<dist> tmp_v;
@@ -84,10 +92,11 @@ private:
 
     static const dist null_distance;
     static const vertex null_vertex;
+    std::queue<vertex> * node_que;
 
-    std::vector<vertex> ordering;
-    std::vector<vertex> reverse_ordering;
-    std::vector<std::pair<double,vertex> > ordering_rank;
+    vertex* ordering;
+    vertex* reverse_ordering; 
+    std::pair<double,vertex>* ordering_rank;
     vertex total;
     NetworKit::Graph * graph;
     dist K;
@@ -104,17 +113,17 @@ private:
     std::vector<vertex> reached_mbfs;
 
 
-    std::vector<std::vector<dist> > loop_labels;
-    std::vector<index_t> length_labels[2];
+    std::vector<dist>* loop_labels;
+    index_t ** length_labels;
 
 
-    std::vector<bool> tmp_pruned;
-    std::vector<vertex> tmp_offset;
-    std::vector<vertex> tmp_count;
-    std::vector<dist>  tmp_dist_count[2];
-    std::vector<dist>  tmp_s_offset;
-    std::vector<std::vector<dist> > tmp_s_count;
-    std::vector<dist> visited_in_update_loops;
+    bool* tmp_pruned;
+    dist* tmp_offset;
+    vertex* tmp_count;
+    std::vector<dist>*  tmp_dist_count;
+    dist*  tmp_s_offset;
+    std::vector<dist>* tmp_s_count;
+    dist* visited_in_update_loops;
 
 
 
