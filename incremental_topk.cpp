@@ -750,7 +750,8 @@ void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
     this->updated.insert(t);
     
     vertex currently_reached_nodes = 0;
-    std::vector<dist> dists;
+    this->dists.clear();
+    this->dists.shrink_to_fit();
     vertex to_v;
     vertex v;
     dist c;
@@ -767,7 +768,7 @@ void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
             }
             this->query(reverse_ordering[s], reverse_ordering[v], dists);
             currently_reached_nodes += 1;
-            this->tmp_pruned[v] = dists.size() == this->K && *dists.rbegin() <= distance;
+            this->tmp_pruned[v] = this->dists.size() == this->K && *dists.rbegin() <= distance;
 
             if(this->tmp_pruned[v]){
                 continue;
@@ -991,35 +992,35 @@ inline void IncrementalTopK::extend_label_repair(vertex v, vertex start, dist di
 
 }
 
-void IncrementalTopK::mod_bfs(vertex s, vertex t, std::vector<dist> &ret) {
-    s = ordering[s];
-    t = ordering[t];
-    std:vector<std::vector<dist> > distanze(graph->numberOfNodes());
-    std::priority_queue<pair<dist, vertex > > que;
+// void IncrementalTopK::mod_bfs(vertex s, vertex t, std::vector<dist> &ret) {
+//     s = ordering[s];
+//     t = ordering[t];
+//     std:vector<std::vector<dist> > distanze(graph->numberOfNodes());
+//     std::priority_queue<pair<dist, vertex > > que;
 
-    que.push(make_pair(0, s));
-    vertex v;
-    vertex dist_negative;
-    while (!que.empty()) {
-        v = que.top().second;
-        dist_negative = -que.top().first;
-        que.pop();
+//     que.push(make_pair(0, s));
+//     vertex v;
+//     vertex dist_negative;
+//     while (!que.empty()) {
+//         v = que.top().second;
+//         dist_negative = -que.top().first;
+//         que.pop();
 
-        if(distanze[t].size() >= this->K){
-            break;
-        }
-        if (distanze[v].size() >= this->K){
-            continue;
-        }
+//         if(distanze[t].size() >= this->K){
+//             break;
+//         }
+//         if (distanze[v].size() >= this->K){
+//             continue;
+//         }
 
-        distanze[v].push_back(dist_negative);
-        for(vertex u : graph->neighborRange(reverse_ordering[v])){
+//         distanze[v].push_back(dist_negative);
+//         for(vertex u : graph->neighborRange(reverse_ordering[v])){
 
-        // graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
+//         // graph->forNeighborsOf(reverse_ordering[v], [&](NetworKit::node u) {
             
-            que.push(make_pair(-(1 + dist_negative), ordering[u]));
-        }
-    }
-    ret = distanze[t];
-}
+//             que.push(make_pair(-(1 + dist_negative), ordering[u]));
+//         }
+//     }
+//     ret = distanze[t];
+// }
 

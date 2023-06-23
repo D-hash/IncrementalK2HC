@@ -52,7 +52,7 @@ public:
 
     double n_reached_nodes();
     // double n_reached_nodes_mbfs();
-    void mod_bfs(vertex, vertex, std::vector<dist>&);
+    // void mod_bfs(vertex, vertex, std::vector<dist>&);
 
 
     double loops_time;
@@ -65,6 +65,7 @@ public:
     void deallocate_aux();
 
 private:
+    std::vector<dist> dists;
     std::set<vertex> updated;
     std::vector<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
     std::set<vertex> vertices_to_update;
