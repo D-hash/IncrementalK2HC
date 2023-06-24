@@ -58,7 +58,8 @@ int main(int argc, char **argv) {
     ("num_queries,q", po::value<int>(), "Number of Queries to Be Performed")
 	("directed,d",po::value<int>(), "[FALSE(0) TRUE(1)]")
 	("ordering,o",po::value<int>(), "Type of Node Ordering [DEGREE(0) APPROX-BETWEENESS(1) k-PATH(2)]")
-	;
+    ("experiment,e",po::value<int>(), "Type of Experiment [RANDOM(0) SEMI-REALISTIC(1) TEMPORAL(2)]")
+    ;
 
     po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -130,16 +131,30 @@ int main(int argc, char **argv) {
         throw std::runtime_error("not yet implemented");
 
     }
-    
-    std::cout << "Reading " << graph_location << " building with K = " << K << " num_queries = "<<num_queries<<" ordering "<<ordering<<"\n";
+
+    int experiment = -1;
+    if(vm.count("experiment")){
+        experiment = vm["experiment"].as<int>();
+    }
+
+    if(experiment != 0 && experiment != 1 && experiment != 2){
+        std::cout << desc << "\n";
+        throw std::runtime_error("Wrong experiment type");
+    }
+
+    std::cout << "Reading " << graph_location << " building with K = " << K << " num_queries = "<<num_queries<<" ordering "<<ordering<<" experiment " << experiment << "\n";
 
 
     // LETTURA
     NetworKit::Graph *graph = new NetworKit::Graph();
 
+    std::vector<std::pair<uint64_t, std::pair<uint32_t , uint32_t>> > edges; // used to sort temporal edges
 
 	if(graph_location.find(".hist") != std::string::npos){
-		GraphManager::read_hist(graph_location,&graph);
+		GraphManager::read_hist(graph_location,&graph,&edges);
+        std::cout << "Sorting temporal edges...\n";
+        sort(edges.begin(), edges.end());
+        std::cout << "Sorting done!\n";
 	}
 	else if(graph_location.find(".nde") != std::string::npos || graph_location.find(".el") != std::string::npos){
 		GraphManager::read_nde(graph_location,&graph);
@@ -152,56 +167,101 @@ int main(int argc, char **argv) {
 	*graph = NetworKit::GraphTools::toUnweighted(*graph);
 	*graph = NetworKit::GraphTools::toUndirected(*graph);
 
-	const NetworKit::Graph& graph_handle = *graph;
-	NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
-	*graph = cc->extractLargestConnectedComponent(graph_handle, true);
-    graph->shrinkToFit();
-    graph->indexEdges();
-	std::cout<<"Graph after CC has "<<graph->numberOfNodes()<<" vertices and "<<graph->numberOfEdges()<<" edges\n";
-    double density = NetworKit::GraphTools::density(*graph);
-    NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle,NetworKit::DiameterAlgo::EXACT,0.0);
-    dm->run();
+    std::vector<std::pair<vertex,vertex>> to_add;
 
-    
-    double diameter = dm->getDiameter().first;
-    delete dm;
-    
-	std::cout<<"Density: "<<density<<"\n";
-	std::cout<<"Diameter: "<<diameter<<"\n";
-    
     if(num_insertions>=graph->numberOfEdges()){
         num_insertions=graph->numberOfEdges();
     }
-    std::cout << "Number of insertions " << num_insertions << "\n";
-    
-    std::cout << "Removal of " << num_insertions << " edges\n";
-
     edge_id original_n_edges = graph->numberOfEdges();
-    std::vector<std::pair<vertex,vertex>> removed_edges;
-    
-    uint16_t attempts = 0;
-    for(size_t i = 0; i < num_insertions; i++){
 
-        vertex a = NetworKit::GraphTools::randomNode(*graph);
-        vertex b = NetworKit::GraphTools::randomNeighbor(*graph,a);
-
-        graph->removeEdge(a,b);
-        attempts = 0;
-        cc->run();
-        while(cc->numberOfComponents()>1){
-            attempts+=1;
-            graph->addEdge(a,b);
-            a = NetworKit::GraphTools::randomNode(*graph);
-            b = NetworKit::GraphTools::randomNeighbor(*graph,a);
-            graph->removeEdge(a,b);
-            cc->run();
-            if(attempts>graph->numberOfEdges())
-                throw new std::runtime_error("experiment fails, too many removals, cc cannot be preserved");
+    if(experiment == 2){
+        long long int ni = 0;
+        for(size_t i = edges.size()-1; ni < num_insertions; i--) {
+            if (find(to_add.begin(), to_add.end(), make_pair(edges[i].second.first, edges[i].second.second)) !=
+                to_add.end() ||
+                find(to_add.begin(), to_add.end(), make_pair(edges[i].second.second, edges[i].second.first)) !=
+                to_add.end())
+                continue;
+            if (edges[i].second.first == edges[i].second.second) continue;
+            to_add.emplace_back(edges[i].second.first, edges[i].second.second);
+            graph->removeEdge(edges[i].second.first, edges[i].second.second);
+            ni++;
         }
-        removed_edges.push_back(std::make_pair(a,b));
+        std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
+        assert(graph->numberOfEdges()==original_n_edges-to_add.size());
+
     }
-    assert(graph->numberOfEdges()==original_n_edges-removed_edges.size());
-    std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
+    else {
+        const NetworKit::Graph &graph_handle = *graph;
+        NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
+        *graph = cc->extractLargestConnectedComponent(graph_handle, true);
+        graph->shrinkToFit();
+        graph->indexEdges();
+        std::cout << "Graph after CC has " << graph->numberOfNodes() << " vertices and " << graph->numberOfEdges()
+                  << " edges\n";
+        double density = NetworKit::GraphTools::density(*graph);
+        NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle,NetworKit::DiameterAlgo::EXACT,0.0);
+        dm->run();
+
+
+        double diameter = dm->getDiameter().first;
+        delete dm;
+
+        std::cout << "Density: " << density << "\n";
+        std::cout << "Diameter: " << diameter << "\n";
+
+        std::cout << "Number of insertions " << num_insertions << "\n";
+
+        if (experiment == 1) {
+            std::cout << "Removal of " << num_insertions << " edges\n";
+
+            uint16_t attempts = 0;
+            for (size_t i = 0; i < num_insertions; i++) {
+
+                vertex a = NetworKit::GraphTools::randomNode(*graph);
+                vertex b = NetworKit::GraphTools::randomNeighbor(*graph, a);
+
+                graph->removeEdge(a, b);
+                attempts = 0;
+                cc->run();
+                while (cc->numberOfComponents() > 1) {
+                    attempts += 1;
+                    graph->addEdge(a, b);
+                    a = NetworKit::GraphTools::randomNode(*graph);
+                    b = NetworKit::GraphTools::randomNeighbor(*graph, a);
+                    graph->removeEdge(a, b);
+                    cc->run();
+                    if (attempts > graph->numberOfEdges())
+                        throw new std::runtime_error("experiment fails, too many removals, cc cannot be preserved");
+                }
+                to_add.push_back(std::make_pair(a, b));
+            }
+            assert(graph->numberOfEdges() == original_n_edges - to_add.size());
+            std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
+        } else {
+            uint16_t attempts = 0;
+            for (int i = 0; i < num_insertions; i++) {
+                vertex a = NetworKit::GraphTools::randomNode(graph_handle);
+                vertex b = NetworKit::GraphTools::randomNode(graph_handle);
+                attempts = 0;
+                while (graph->hasEdge(a, b) || a == b ||
+                       find(to_add.begin(), to_add.end(), make_pair(a, b)) != to_add.end() ||
+                       find(to_add.begin(), to_add.end(), make_pair(b, a)) != to_add.end()) {
+                    attempts += 1;
+                    if (attempts > graph->numberOfEdges()) {
+                        throw new std::runtime_error("experiment fails, too many insertions");
+                    }
+                    a = NetworKit::GraphTools::randomNode(graph_handle);
+                    b = NetworKit::GraphTools::randomNode(graph_handle);
+                }
+                to_add.push_back(std::make_pair(a, b));
+            }
+            assert(to_add.size() == num_insertions);
+        }
+    }
+    edges.clear();
+
+
 
     IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering, false);
 
@@ -228,6 +288,25 @@ int main(int argc, char **argv) {
 
     
     }
+
+    std::string experiment_string;
+
+    switch(experiment){
+        case (0):
+            experiment_string = "RND";
+            break;
+        case (1):
+            experiment_string = "SRL";
+            break;
+        case (2):
+            experiment_string = "TMP";
+            break;
+        default:
+            throw new std::runtime_error("problem on experiment string");
+
+
+    }
+
     //timestring
     std::time_t rawtime;
     std::tm* timeinfo;
@@ -244,9 +323,9 @@ int main(int argc, char **argv) {
     string_object_name>>k_string;
     string_object_name<<num_insertions;
     string_object_name>>n_insert_string;
-	std::string timestampstring = shortenedName+"_"+k_string+"_"+n_insert_string+"_"+order_string+"_"+tmp_time;
+	std::string timestampstring = shortenedName+"_"+k_string+"_"+n_insert_string+"_"+order_string+"_"+experiment_string+"_"+tmp_time;
 
-	std::string logFile = timestampstring +"_remove_add.csv";
+	std::string logFile = timestampstring +".csv";
     
 
     std::ofstream ofs(logFile);
@@ -273,10 +352,10 @@ int main(int argc, char **argv) {
 
     mytimer time_counter;
 
-    for(size_t t=0;t<removed_edges.size();t++){
+    for(size_t t=0;t<to_add.size();t++){
 
-        kpll->x = removed_edges[t].first;
-        kpll->y = removed_edges[t].second;
+        kpll->x = to_add[t].first;
+        kpll->y = to_add[t].second;
         std::cout << "New edge " << kpll->x << " " << kpll->y << "\n";
 
         std::cout << "Updating loops...";
@@ -296,12 +375,12 @@ int main(int argc, char **argv) {
 
         affected_hubs.push_back(kpll->aff_hubs);
         reached_nodes.push_back(kpll->n_reached_nodes());
-        added_edges.push_back(removed_edges[t]);
+        added_edges.push_back(to_add[t]);
         
     }
     kpll->deallocate_aux();
 
-    assert(added_edges.size()==removed_edges.size());
+    assert(added_edges.size()==to_add.size());
     std::vector<double> sl_time;
     std::vector<double> khl_time;
 
@@ -378,7 +457,7 @@ int main(int argc, char **argv) {
         << graph->numberOfNodes() << "," 
         << graph->numberOfEdges() << "," 
         << K << "," 
-        << removed_edges.size()+1 << ","
+        << to_add.size()+1 << ","
         << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << final_loop_entries << "," << final_leng_entries << ","
         << average(khl_time) << ","
         << median(khl_time) << "," 

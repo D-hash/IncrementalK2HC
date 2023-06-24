@@ -9,7 +9,7 @@
 class GraphManager
 {
 public:
-    static void read_hist(std::string source, NetworKit::Graph **g)
+    static void read_hist(std::string source, NetworKit::Graph **g, std::vector<std::pair<uint64_t, std::pair<uint32_t , uint32_t>> > *edge_structure)
     {
         std::ifstream ifs(source);
         if (!ifs)
@@ -49,6 +49,7 @@ public:
             else
             {
                 graph->addEdge(v1, v2, weight);
+                edge_structure->emplace_back(time, std::make_pair(v1,v2));
 #ifndef NDEBUG
                 if (!directed)
                 {
