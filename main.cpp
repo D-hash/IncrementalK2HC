@@ -203,10 +203,10 @@ int main(int argc, char **argv) {
     assert(graph->numberOfEdges()==original_n_edges-removed_edges.size());
     std::cout << "Edges after removal " << graph->numberOfEdges() << '\n';
 
-    IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering);
+    IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering, false);
 
     kpll->build();
-    
+
     std::cout << "First Labeling Loop time: " << kpll->loops_time << " s | First Labeling Indexing time: " << kpll->lengths_time<< " s\n";
     std::cout << "First Labeling Loop entries: " << kpll->loop_entries<<" First Labeling Length Entries: "<<kpll->length_entries<< "\n";
     std::cout << "Number of Vertices: " << graph->numberOfNodes() << "\n";
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
     std::vector<size_t> index_lengths_size;
 
     
-    std::vector<uint32_t> affected_hubs;
+    std::vector<vertex> affected_hubs;
     std::vector<double> reached_nodes;
     std::vector<pair<vertex, vertex>> added_edges;
 
@@ -283,12 +283,12 @@ int main(int argc, char **argv) {
         time_counter.restart();
         kpll->update_loops();
         update_loops_times.push_back(time_counter.elapsed());
-        std::cout<<"done! Update loops time: " << time_counter.elapsed() << "\n"<<std::flush;
+        std::cout<<"done! \nUpdate loops time: " << time_counter.elapsed() << "\n"<<std::flush;
         std::cout << "Updating lengths...";
         time_counter.restart();
         kpll->update_lengths();
         update_lengths_times.push_back(time_counter.elapsed());
-        std::cout << "done! Update lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
+        std::cout << "done! \nUpdate lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
         std::cout << t+1 << "-th insertion correct!" << "\n";
 
         index_loops_size.push_back(kpll->loop_entries);
@@ -299,52 +299,75 @@ int main(int argc, char **argv) {
         added_edges.push_back(removed_edges[t]);
         
     }
-    assert(added_edges.size()==removed_edges.size());
+    kpll->deallocate_aux();
 
-    IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering);
+    assert(added_edges.size()==removed_edges.size());
+    std::vector<double> sl_time;
+    std::vector<double> khl_time;
+
+    std::vector<std::pair<vertex,vertex>> queries;
+    std::vector<std::vector<dist>> dists;
+    ProgressStream query_bar(num_queries);
+    vertex u,v;
+    query_bar.label() << "Queries Generation and DynKPLL";
+    for(uint64_t j=0; j<num_queries; j++){
+        u = NetworKit::GraphTools::randomNode(*graph);
+        v = NetworKit::GraphTools::randomNode(*graph);
+        std::vector<dist> distances;
+        time_counter.restart();
+        kpll->query(u, v, distances);
+        khl_time.push_back(time_counter.elapsed());
+        queries.emplace_back(u,v);
+        dists.emplace_back(distances);
+        ++query_bar;
+    }
+    vertex final_loop_entries = kpll->loop_entries, final_aff_hubs = kpll->aff_hubs;
+    double final_reached = kpll->n_reached_nodes();
+    vertex final_leng_entries = kpll->length_entries;
+    delete kpll;
+
+    IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering, true);
 
     scratch_kpll->build();
+    //OK, no updates
+    scratch_kpll->deallocate_aux();
 
     std::cout << "From Scratch Loop time: " << scratch_kpll->loops_time << " s | From Scratch Indexing time: "<< scratch_kpll->lengths_time<< " s\n";
     std::cout << "From Scratch Loop entries: " << scratch_kpll->loop_entries<<" From Scratch Length Entries: "<<scratch_kpll->length_entries<< "\n";
-    std::vector<double> sl_time;
-    std::vector<double> khl_time;
-    ProgressStream query_bar(num_queries);
     
-    query_bar.label() << "Queries";
-    size_t l;
-    std::vector<dist> update_distances;
-    std::vector<dist> from_scratch_distances;
+    assert(queries.size()==num_queries);
+    assert(dists.size()==num_queries);
 
+    ProgressStream second_query_bar(num_queries);
+
+    
+    second_query_bar.label() << "Queries KPLL and Comparison";
     for(uint64_t j=0; j<num_queries; j++){
-        vertex u = NetworKit::GraphTools::randomNode(*graph);
-        vertex v = NetworKit::GraphTools::randomNode(*graph);
-
+        u = queries[j].first;
+        v = queries[j].second;
+        time_counter.restart();
         
-        time_counter.restart();
-        kpll->query(u, v, update_distances);
-        khl_time.push_back(time_counter.elapsed());
-        time_counter.restart();
-
-        scratch_kpll->query(u, v, from_scratch_distances);
+        std::vector<dist> distances;
+        scratch_kpll->query(u, v, distances);
         sl_time.push_back(time_counter.elapsed());
-        
-        if(update_distances.size() != from_scratch_distances.size()){
+
+        if(dists[j].size() != distances.size()){
             throw new std::runtime_error("cardinality problem");
         }
-        for(l=0; l < update_distances.size(); l++){
-            if(update_distances[l] != from_scratch_distances[l]){
+        for(size_t l=0; l < dists[j].size(); l++){
+            if(dists[j][l] != distances[l]){
                 std::cout << "Error bw " << u << "-" << v << "\n";
-                std::cout << "Updated labeling distance: " << update_distances[l] << "\n";
-                std::cout << "Scratch labeling distance: " << from_scratch_distances[l] << "\n";
-                for(size_t id=0; id < update_distances.size(); id++){
-                    std:: cout << "Up " << update_distances[id] << " | Scratch " << from_scratch_distances[id] << "\n";
+                std::cout << "Updated labeling distance: " << dists[j][l] << "\n";
+                std::cout << "Scratch labeling distance: " << distances[l] << "\n";
+                for(size_t id=0; id < dists[j].size(); id++){
+                    std:: cout << "Up " << dists[j][id] << " | Scratch " << distances[id] << "\n";
                 }
                 throw new std::runtime_error("correctness problem");
             }
         }
-        ++query_bar;
+        ++second_query_bar;
     }
+
     std::cout << "Writing CSV file...";
     for(size_t j = 0; j < num_insertions; j++) {
         ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << j << ","
@@ -356,11 +379,11 @@ int main(int argc, char **argv) {
         << graph->numberOfEdges() << "," 
         << K << "," 
         << removed_edges.size()+1 << ","
-        << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << kpll->loop_entries << "," << kpll->length_entries << ","
+        << "none" << "," << "none" << ","  << "final" << "," << "final" << "," << final_loop_entries << "," << final_leng_entries << ","
         << average(khl_time) << ","
         << median(khl_time) << "," 
-        << kpll->aff_hubs << "," 
-        << kpll->n_reached_nodes() <<"\n";
+        << final_aff_hubs << "," 
+        << final_reached <<"\n";
 
     ofs << graph_location << "," 
         << graph->numberOfNodes() << "," 
@@ -373,7 +396,6 @@ int main(int argc, char **argv) {
     std::cout << "done!\n";
     ofs.close();    
     delete graph;
-    delete kpll;
     delete scratch_kpll;
 
 
