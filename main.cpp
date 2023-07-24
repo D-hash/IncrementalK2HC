@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
         std::cout << "Graph after CC has " << graph->numberOfNodes() << " vertices and " << graph->numberOfEdges()
                   << " edges\n";
         double density = NetworKit::GraphTools::density(*graph);
-        NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle);
+        NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle,NetworKit::DiameterAlgo::EXACT,0.0);
         dm->run();
 
 
