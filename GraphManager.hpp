@@ -38,7 +38,7 @@ public:
 
             ++reader;
 
-            assert(weighted == 1 || weight == 1 || weight == -1);
+            //assert(weighted == 1 || weight == 1 || weight == -1);
 
             if (v1 == v2)
                 continue;

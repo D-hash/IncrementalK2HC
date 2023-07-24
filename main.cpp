@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
 
     std::vector<std::pair<uint64_t, std::pair<uint32_t , uint32_t>> > edges; // used to sort temporal edges
 
-	if(graph_location.find(".hist") != std::string::npos){
+	if(graph_location.find(".hist") != std::string::npos || graph_location.find(".temporal") != std::string::npos){
 		GraphManager::read_hist(graph_location,&graph,&edges);
         std::cout << "Sorting temporal edges...\n";
         sort(edges.begin(), edges.end());
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
         std::cout << "Graph after CC has " << graph->numberOfNodes() << " vertices and " << graph->numberOfEdges()
                   << " edges\n";
         double density = NetworKit::GraphTools::density(*graph);
-        NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle,NetworKit::DiameterAlgo::EXACT,0.0);
+        NetworKit::Diameter *dm = new NetworKit::Diameter(graph_handle);
         dm->run();
 
 
