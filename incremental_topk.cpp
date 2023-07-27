@@ -290,7 +290,7 @@ inline void IncrementalTopK::compute_loop_entries(vertex s){
 
     this->node_que[curr].push(s);
    
-    this->updated.insert(s);
+    this->updated.push_back(s);
     this->tmp_dist_count[curr][s] = 1;
     
     vertex num_reached = 0;
@@ -328,7 +328,7 @@ inline void IncrementalTopK::compute_loop_entries(vertex s){
                 to_v = ordering[u];
                 if (this->tmp_count[to_v] == 0){
                     // assert(std::find(this->updated.begin(),this->updated.end(),to_v)==this->updated.end());
-                    this->updated.insert(to_v);
+                    this->updated.push_back(to_v);
                 }
 
                 if (to_v >= s && this->tmp_count[to_v] < this->K){
@@ -370,7 +370,7 @@ inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
 
     this->node_que[curr].push(s);
     this->tmp_dist_count[curr][s] = 1;
-    this->updated.insert(s);
+    this->updated.push_back(s);
     vertex v,to_vert;
     dist c;
 
@@ -403,7 +403,7 @@ inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
             for(vertex u : graph->neighborRange(reverse_ordering[v])){
                 to_vert = ordering[u];
                 if(this->tmp_count[to_vert] == 0){
-                    this->updated.insert(to_vert);
+                    this->updated.push_back(to_vert);
                 }
 
                 if(to_vert > s && this->tmp_count[to_vert] < K){
@@ -626,10 +626,6 @@ void IncrementalTopK::update_loops() {
 }
 
 void IncrementalTopK::update_lengths() {
-
-
-
-
     this->aff_hubs = 0;
     this->reached_nodes.clear();
 
@@ -738,10 +734,6 @@ void IncrementalTopK::update_lengths() {
     // std::cout<<"done!\n";
 }
 
-
-
-
-
 inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
     const index_t &idv = length_labels[rev][v];
 
@@ -767,6 +759,7 @@ inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
     }
     return false;
 }
+
 inline void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
     
     set_temp_vars(s, rev);
@@ -783,7 +776,7 @@ inline void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
     this->node_que[curr].push(t);
     this->tmp_dist_count[curr][t] = 1;
     
-    this->updated.insert(t);
+    this->updated.push_back(t);
     
     vertex currently_reached_nodes = 0;
     this->dists.clear();
@@ -817,7 +810,7 @@ inline void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
 
                 to_v = ordering[u];
                 if(this->tmp_count[to_v] == 0){
-                    this->updated.insert(to_v);
+                    this->updated.push_back(to_v);
                 }
 
                 if(to_v > s && tmp_count[to_v] < K){
@@ -878,7 +871,7 @@ inline void IncrementalTopK::reset_temp_vars(vertex s, bool rev){
         // this->tmp_s_count[w].shrink_to_fit();
     }
 
-    for(std::set<vertex>::iterator i=this->updated.begin(); i != this->updated.end(); i++){
+    for(std::vector<vertex>::iterator i=this->updated.begin(); i != this->updated.end(); i++){
         w = *i;
         this->tmp_count[w] = 0;
         this->tmp_offset[w] = null_distance;
@@ -920,6 +913,7 @@ inline void IncrementalTopK::allocate_label(vertex v, vertex start, dist distanc
     length_entries+=(idv.d_array.size()-old_size);
 
 }
+
 double IncrementalTopK::n_reached_nodes(){
     double sum = 0.0; 
     for(auto& element:reached_nodes){
@@ -934,8 +928,6 @@ double IncrementalTopK::n_reached_nodes(){
 //     }
 //     return reached_mbfs.size()>0 ? sum / (double) reached_mbfs.size() : 0.0;
 // }
-
-
 
 inline void IncrementalTopK::extend_label(vertex v, vertex start, dist distance, dist count, bool dir, size_t pos){
     index_t &idv = length_labels[dir][v];

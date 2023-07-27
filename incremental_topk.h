@@ -74,7 +74,7 @@ public:
 
 private:
     std::vector<dist> dists;
-    std::set<vertex> updated;
+    std::vector<vertex> updated;
     std::queue<std::tuple<vertex, vertex, dist, dist, bool, vertex>> new_labels;
     std::set<vertex> vertices_to_update;
     bool is_from_scratch_only;
