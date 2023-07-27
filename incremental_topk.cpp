@@ -830,7 +830,7 @@ inline void IncrementalTopK::resume_pbfs(vertex s, vertex t, dist d, bool rev) {
     delete[] this->node_que;
     this->reached_nodes.push_back(currently_reached_nodes);
     
-    reset_temp_vars(t, rev);
+    reset_temp_vars(s, rev);
 }
 
 inline void IncrementalTopK::set_temp_vars(vertex s, bool rev){
