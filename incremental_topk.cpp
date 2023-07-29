@@ -606,6 +606,7 @@ void IncrementalTopK::update_loops() {
         if(ordered_degree >= K){
             continue;
         }
+        loop_entries -= this->loop_labels[u].size();
         this->loop_labels[u].clear();
         // this->loop_labels[u].shrink_to_fit();
         this->compute_loop_entries(u);
