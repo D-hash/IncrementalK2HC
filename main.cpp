@@ -330,10 +330,10 @@ int main(int argc, char **argv) {
     std::ofstream ofs(logFile);
 
 
-    ofs << "G,V,E,K,Insertions,x,y,UTLoops,UTLengths,ULoopsSize,ULengthSize,UAvgQT,UMedQT,aff,reached\n";
+    ofs << "G,V,E,K,Insertions,x,y,UTLoops,UTLengths,ULoopsSize,ULengthSize,UAvgQT,UMedQT,affhubs,reached,affcycles,reachedMbfs\n";
     ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << 0 << ","
         << 0 << "," << 0 << ","  << kpll->loops_time << "," << kpll->lengths_time << "," << kpll->loop_entries << "," << kpll->length_entries << ","
-        << 0 << "," << 0 << "," << 0 << "," << 0 <<"\n";
+        << 0 << "," << 0 << "," << 0 << "," << 0 << "," << 0 << "," << 0 << "\n";
     
 
     std::vector<double> update_loops_times;
@@ -343,9 +343,11 @@ int main(int argc, char **argv) {
     std::vector<size_t> index_loops_size;
     std::vector<size_t> index_lengths_size;
 
-    
+
     std::vector<vertex> affected_hubs;
+    std::vector<vertex> affected_cycles;
     std::vector<double> reached_nodes;
+    std::vector<double> reached_nodes_mbfs;
     std::vector<pair<vertex, vertex>> added_edges;
 
 
@@ -362,6 +364,9 @@ int main(int argc, char **argv) {
         kpll->update_loops();
         update_loops_times.push_back(time_counter.elapsed());
         std::cout<<"done! \nUpdate loops time: " << time_counter.elapsed() << "\n"<<std::flush;
+        affected_cycles.push_back(kpll->aff_cycles);
+        reached_nodes_mbfs.push_back(kpll->n_reached_nodes_mbfs());
+
         std::cout << "Updating lengths...";
         time_counter.restart();
         kpll->update_lengths();
@@ -399,8 +404,9 @@ int main(int argc, char **argv) {
         dists.emplace_back(distances);
         ++query_bar;
     }
-    vertex final_loop_entries = kpll->loop_entries, final_aff_hubs = kpll->aff_hubs;
+    vertex final_loop_entries = kpll->loop_entries, final_aff_hubs = kpll->aff_hubs, final_aff_cycles = kpll->aff_cycles;
     double final_reached = kpll->n_reached_nodes();
+    double final_reached_mbfs = kpll->n_reached_nodes_mbfs();
     vertex final_leng_entries = kpll->length_entries;
     delete kpll;
 
@@ -450,7 +456,7 @@ int main(int argc, char **argv) {
     for(size_t j = 0; j < num_insertions; j++) {
         ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << j << ","
             << added_edges[j].first << "," << added_edges[j].second << ","  << update_loops_times[j] << "," << update_lengths_times[j] << "," << index_loops_size[j] << "," << index_lengths_size[j] << ","
-            << 0 << "," << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] <<"\n";
+            << 0 << "," << 0 << "," << affected_hubs[j] << "," << reached_nodes[j] << "," << affected_cycles[j] << "," << reached_nodes_mbfs[j] <<"\n";
     }
     ofs << graph_location << "," 
         << graph->numberOfNodes() << "," 
@@ -461,7 +467,9 @@ int main(int argc, char **argv) {
         << average(khl_time) << ","
         << median(khl_time) << "," 
         << final_aff_hubs << "," 
-        << final_reached <<"\n";
+        << final_reached << ","
+        << final_aff_cycles << ","
+        << final_reached_mbfs <<"\n";
 
     ofs << graph_location << "," 
         << graph->numberOfNodes() << "," 
@@ -470,7 +478,7 @@ int main(int argc, char **argv) {
         << num_insertions << ","
         << "scratch" << "," << "scratch" << ","  << scratch_kpll->loops_time << "," << scratch_kpll->lengths_time << "," << scratch_kpll->loop_entries << "," << scratch_kpll->length_entries << ","
         << average(sl_time) << ","
-        << median(sl_time) << ",scratch,scratch\n";
+        << median(sl_time) << ",scratch,scratch,scratch,scratch\n";
     std::cout << "done!\n";
     ofs.close();    
     delete graph;

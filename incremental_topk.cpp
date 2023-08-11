@@ -513,7 +513,6 @@ inline void IncrementalTopK::verify_sizes(){
 void IncrementalTopK::update_loops() {
     
     this->vertices_to_update.clear();
-
     std::set<vertex> reset_visited;
     std::queue<vertex> *q = new std::queue<vertex>();
 
@@ -528,7 +527,6 @@ void IncrementalTopK::update_loops() {
         if(this->visited_in_update_loops[dequeued_v] > K){
             continue;
         }
-        aff_cycles++;
         this->vertices_to_update.insert(dequeued_v);
         
         for(vertex u : graph->neighborRange(reverse_ordering[dequeued_v])){
@@ -556,7 +554,6 @@ void IncrementalTopK::update_loops() {
         if(this->visited_in_update_loops[dequeued_v] > K){
             continue;
         }
-        aff_cycles++;
         this->vertices_to_update.insert(dequeued_v);
         for(vertex u : graph->neighborRange(reverse_ordering[dequeued_v])){
 
@@ -632,8 +629,7 @@ void IncrementalTopK::update_lengths() {
 
     const index_t &idva = length_labels[0][ordering[this->x]];
     const index_t &idvb = length_labels[0][ordering[this->y]];
-    
-    
+
     
     this->old_label_a.clear();
     this->old_label_b.clear();
@@ -922,13 +918,14 @@ double IncrementalTopK::n_reached_nodes(){
     }
     return reached_nodes.size()>0 ? sum / (double)reached_nodes.size() : 0.0;
 }
-// double IncrementalTopK::n_reached_nodes_mbfs(){ 
-//     double sum = 0.0; 
-//     for(auto& element:reached_mbfs){
-//         sum+=(double)element;
-//     }
-//     return reached_mbfs.size()>0 ? sum / (double) reached_mbfs.size() : 0.0;
-// }
+
+ double IncrementalTopK::n_reached_nodes_mbfs(){
+     double sum = 0.0;
+     for(auto& element:reached_mbfs){
+         sum+=(double)element;
+     }
+     return reached_mbfs.size()>0 ? sum / (double) reached_mbfs.size() : 0.0;
+ }
 
 inline void IncrementalTopK::extend_label(vertex v, vertex start, dist distance, dist count, bool dir, size_t pos){
     index_t &idv = length_labels[dir][v];

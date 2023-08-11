@@ -59,7 +59,7 @@ public:
 
 
     double n_reached_nodes();
-    // double n_reached_nodes_mbfs();
+    double n_reached_nodes_mbfs();
     // void mod_bfs(vertex, vertex, std::vector<dist>&);
 
 
@@ -124,12 +124,6 @@ private:
     dist*  tmp_s_offset;
     std::vector<dist>* tmp_s_count;
     dist* visited_in_update_loops;
-
-
-
-
-
-    
 
 };
 #endif //INCREMENTAL_TOPK_H
