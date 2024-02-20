@@ -1,6 +1,6 @@
 # IncrementalK2HC
 This is the implementation of **DYN-KPLL** algorithm presented in "Top-k Distance Queries on Large Time-Evolving Graphs"
-submitted at the *21st Symposium of Experimental Algorithms* (SEA2023).
+submitted at *IEEE Access* Journal.
 Given a k-2-Hop Cover index \[Akiba et al., AAAI2015\] of a graph, the algorithm is able to update the index after 
 incremental graph changes.
 
