@@ -265,9 +265,9 @@ int main(int argc, char **argv) {
     IncrementalTopK* kpll = new IncrementalTopK(graph, K, directed,ordering, false);
 
     kpll->build();
-
+    uint64_t index_size = kpll->compute_index_size();
     std::cout << "First Labeling Loop time: " << kpll->loops_time << " s | First Labeling Indexing time: " << kpll->lengths_time<< " s\n";
-    std::cout << "First Labeling Loop entries: " << kpll->loop_entries<<" First Labeling Length Entries: "<<kpll->length_entries<< "\n";
+    std::cout << "First Labeling Loop entries: " << 0 <<" First Labeling Length Entries: "<< index_size << "\n";
     std::cout << "Number of Vertices: " << graph->numberOfNodes() << "\n";
 
     std::string order_string;
@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
 
     ofs << "G,V,E,K,Insertions,x,y,UTLoops,UTLengths,ULoopsSize,ULengthSize,UAvgQT,UMedQT,affhubs,reached,affcycles,reachedMbfs\n";
     ofs << graph_location << "," << graph->numberOfNodes() << "," << graph->numberOfEdges() << "," << K << "," << 0 << ","
-        << 0 << "," << 0 << ","  << kpll->loops_time << "," << kpll->lengths_time << "," << kpll->loop_entries << "," << kpll->length_entries << ","
+        << 0 << "," << 0 << ","  << kpll->loops_time << "," << kpll->lengths_time << "," << 0 << "," << index_size << ","
         << 0 << "," << 0 << "," << 0 << "," << 0 << "," << 0 << "," << 0 << "\n";
     
 
@@ -352,7 +352,6 @@ int main(int argc, char **argv) {
 
 
     mytimer time_counter;
-
     for(size_t t=0;t<to_add.size();t++){
 
         kpll->x = to_add[t].first;
@@ -374,8 +373,8 @@ int main(int argc, char **argv) {
         std::cout << "done! \nUpdate lengths time: " << time_counter.elapsed()<<"\n"<<std::flush;
         std::cout << t+1 << "-th insertion correct!" << "\n";
 
-        index_loops_size.push_back(kpll->loop_entries);
-        index_lengths_size.push_back(kpll->length_entries);
+        index_loops_size.push_back(0);
+        index_lengths_size.push_back(kpll->compute_index_size());
 
         affected_hubs.push_back(kpll->aff_hubs);
         reached_nodes.push_back(kpll->n_reached_nodes());
@@ -404,20 +403,21 @@ int main(int argc, char **argv) {
         dists.emplace_back(distances);
         ++query_bar;
     }
-    vertex final_loop_entries = kpll->loop_entries, final_aff_hubs = kpll->aff_hubs, final_aff_cycles = kpll->aff_cycles;
+    vertex final_loop_entries = 0, final_aff_hubs = kpll->aff_hubs, final_aff_cycles = kpll->aff_cycles;
     double final_reached = kpll->n_reached_nodes();
     double final_reached_mbfs = kpll->n_reached_nodes_mbfs();
-    vertex final_leng_entries = kpll->length_entries;
+    uint64_t final_leng_entries = kpll->compute_index_size();
     delete kpll;
 
     IncrementalTopK* scratch_kpll = new IncrementalTopK(graph, K, directed, ordering, true);
 
     scratch_kpll->build();
     //OK, no updates
+    index_size = scratch_kpll->compute_index_size();
     scratch_kpll->deallocate_aux();
 
     std::cout << "From Scratch Loop time: " << scratch_kpll->loops_time << " s | From Scratch Indexing time: "<< scratch_kpll->lengths_time<< " s\n";
-    std::cout << "From Scratch Loop entries: " << scratch_kpll->loop_entries<<" From Scratch Length Entries: "<<scratch_kpll->length_entries<< "\n";
+    std::cout << " From Scratch Total Entries: "<< index_size << "\n";
     
     assert(queries.size()==num_queries);
     assert(dists.size()==num_queries);
@@ -476,7 +476,7 @@ int main(int argc, char **argv) {
         << graph->numberOfEdges() << "," 
         << K << "," 
         << num_insertions << ","
-        << "scratch" << "," << "scratch" << ","  << scratch_kpll->loops_time << "," << scratch_kpll->lengths_time << "," << scratch_kpll->loop_entries << "," << scratch_kpll->length_entries << ","
+        << "scratch" << "," << "scratch" << ","  << scratch_kpll->loops_time << "," << scratch_kpll->lengths_time << "," << 0 << "," << scratch_kpll->compute_index_size() << ","
         << average(sl_time) << ","
         << median(sl_time) << ",scratch,scratch,scratch,scratch\n";
     std::cout << "done!\n";

@@ -56,7 +56,7 @@ public:
     void update_lengths();
 
 
-
+    uint64_t compute_index_size();
 
     double n_reached_nodes();
     double n_reached_nodes_mbfs();

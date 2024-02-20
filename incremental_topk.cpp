@@ -177,6 +177,17 @@ void IncrementalTopK::deallocate_aux() {
 
 }
 
+uint64_t IncrementalTopK::compute_index_size() {
+    uint64_t sz = 0;
+    for (size_t dir = 0; dir < 1 + directed; dir++){
+        for(vertex i=0;i<graph->numberOfNodes();i++){
+            sz += this->loop_labels[i].size() * sizeof(dist); // loopcount
+            sz += this->length_labels[dir][i].label_offset.size() * (sizeof(vertex)+sizeof(dist)); // label_offset count
+            sz += this->length_labels[dir][i].d_array.size() * sizeof(dist); // array of distances count
+        }
+    }
+    return sz;
+}
 
 void IncrementalTopK::build(){
 
@@ -200,12 +211,8 @@ void IncrementalTopK::build(){
         this->tmp_s_offset[i] = null_distance;
         this->tmp_s_count[i].clear();
 
-
     });
     this->tmp_s_offset[graph->numberOfNodes()] = 0;
-
-
-    
     
     if(!this->is_from_scratch_only){
         this->visited_in_update_loops = new dist[graph->numberOfNodes()];
@@ -248,12 +255,10 @@ void IncrementalTopK::build(){
     ProgressStream loop_bar(graph->numberOfNodes());
 
     loop_bar.label() << "Loops construction";
-    
     for(size_t v = 0; v < graph->numberOfNodes(); v++){
         this->compute_loop_entries(v);
         ++loop_bar;
     }
-
 
     loops_time = build_timer.elapsed();
 
@@ -358,7 +363,9 @@ inline void IncrementalTopK::compute_loop_entries(vertex s){
 
 
 inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
-    
+
+    allocate_label(s, s, 0, 1, reversed);
+    this->tmp_offset[s] = 0;
     set_temp_vars(s, reversed);
 
     vertex curr = 0;
@@ -383,7 +390,7 @@ inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
             c = this->tmp_dist_count[curr][v];
             this->tmp_dist_count[curr][v] = 0;
 
-            if(c == 0 || tmp_pruned[v]){ 
+            if(c == 0 || tmp_pruned[v]){
                 continue;
             }
             this->tmp_pruned[v] = prune(v, distance, reversed);
@@ -391,15 +398,14 @@ inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
             if(this->tmp_pruned[v]){
                 continue;
             }
-
-            if(this->tmp_offset[v] == null_distance){
-                this->tmp_offset[v] = distance;
-                allocate_label(v, s, distance, c, reversed);
+            if(s!=v) {
+                if (this->tmp_offset[v] == null_distance) {
+                    this->tmp_offset[v] = distance;
+                    allocate_label(v, s, distance, c, reversed);
+                } else {
+                    extend_label(v, s, distance, c, reversed, 0);
+                }
             }
-            else{
-                extend_label(v, s, distance, c, reversed, 0);
-            }
-
             for(vertex u : graph->neighborRange(reverse_ordering[v])){
                 to_vert = ordering[u];
                 if(this->tmp_count[to_vert] == 0){
@@ -416,7 +422,7 @@ inline void IncrementalTopK::pruned_bfs(vertex s, bool reversed){
 
         if (this->node_que[next].empty()){
             break;
-            }
+        }
         std::swap(curr, next);
         distance++;
     }
@@ -747,7 +753,6 @@ inline bool IncrementalTopK::prune(vertex v,  dist d, bool rev){
         int l = dcs.size() - 1;
         int c = d - tmp_s_offset[w] - idv.label_offset[pos].second;
 
-        // By using precomputed table tmp_s_count, compute the number of path with a single loop.
         for (int i = 0; i <= c && i < idv.d_array[pos].size(); i++){
             pcount += (int)dcs[std::min(c - i, l)] * idv.d_array[pos][i];
         }
